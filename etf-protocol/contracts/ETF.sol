@@ -73,11 +73,10 @@ contract ETF is ERC20, Ownable, ReentrancyGuard, Pausable {
     }
 
     function withdraw(uint256 share) external onlyEOA nonReentrant whenNotPaused {
-
         uint256 burnAmount = share;
         if (msg.sender != feeRecipient && managerRedeemFee > 0) {
             uint256 fee = share.mul(managerRedeemFee).div(FACTOR);
-            _mint(feeRecipient, fee);
+            _transfer(msg.sender, feeRecipient, fee);
             burnAmount = share - fee;
         }
         bool flag = burnAmount == totalSupply(); 
