@@ -75,7 +75,7 @@ contract ETF is ERC20, Ownable, ReentrancyGuard, Pausable {
     function withdraw(uint256 share) external onlyEOA nonReentrant whenNotPaused {
 
         uint256 burnAmount = share;
-        if (msg.sender != feeRecipient) {
+        if (msg.sender != feeRecipient && managerRedeemFee > 0) {
             uint256 fee = share.mul(managerRedeemFee).div(FACTOR);
             _mint(feeRecipient, fee);
             burnAmount = share - fee;
@@ -85,16 +85,17 @@ contract ETF is ERC20, Ownable, ReentrancyGuard, Pausable {
         uint256 count = allWhitelistedTokensLength();
         for(uint256 i = 0; i < count; i++) {
             uint256 amount = 0;
+            address token = allWhitelistedTokens[i];
             if (flag) {
-                amount = IERC20(allWhitelistedTokens[i]).balanceOf(address(this));
+                amount = IERC20(token).balanceOf(address(this));
             } else {
                 if (i == 0) {
-                    amount = burnAmount / tokenWeights[allWhitelistedTokens[i]];
+                    amount = burnAmount;
                 } else {
-                    amount = burnAmount * tokenWeights[allWhitelistedTokens[i]] / tokenWeights[allWhitelistedTokens[0]];
+                    amount = burnAmount * tokenWeights[token] / tokenWeights[allWhitelistedTokens[0]];
                 }
             }
-            TransferHelper.safeTransfer(allWhitelistedTokens[i], msg.sender, amount);
+            TransferHelper.safeTransfer(token, msg.sender, amount);
         }
         emit Withdraw(msg.sender, share);
     }
