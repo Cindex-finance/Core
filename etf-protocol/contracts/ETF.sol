@@ -21,7 +21,7 @@ contract ETF is ERC20, Ownable, ReentrancyGuard, Pausable {
     uint256 constant public FACTOR = 10000;
 
     // BNBX, BUSD-BSCUSD LP
-    address[] public allWhitelistedTokens = [0x1bdd3Cf7F79cfB8EdbB955f20ad99211551BA275, 0x36842f8fb99d55477c0da638af5ceb6bbf86aa98];
+    address[] public allWhitelistedTokens = [0x1bdd3Cf7F79cfB8EdbB955f20ad99211551BA275, 0x36842F8fb99D55477C0Da638aF5ceb6bBf86aA98];
 
     mapping (address => uint256) public tokenWeights;
 
@@ -42,7 +42,7 @@ contract ETF is ERC20, Ownable, ReentrancyGuard, Pausable {
         uint256 count = allWhitelistedTokens.length;
         feeRecipient = msg.sender;
         for(uint256 i = 0; i < count; i++) {
-            tokenWeights[tokens[i]] = weights[i];
+            tokenWeights[allWhitelistedTokens[i]] = weights[i];
             totalTokenWeights = totalTokenWeights.add(weights[i]);
         }
     }
