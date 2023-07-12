@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -12,9 +12,16 @@ contract ETF is ERC20, Ownable, ReentrancyGuard, Pausable {
 
     using SafeMath for uint256;
 
+    string public _symbol = "BSE"; 
+    
+    string public _name = "bsc stable enhancement";
+
+    uint256[] public weights = [100,22800];
+
     uint256 constant public FACTOR = 10000;
 
-    address[] public allWhitelistedTokens;
+    // BNBX, BUSD-BSCUSD LP
+    address[] public allWhitelistedTokens = [0x1bdd3Cf7F79cfB8EdbB955f20ad99211551BA275, 0x36842f8fb99d55477c0da638af5ceb6bbf86aa98];
 
     mapping (address => uint256) public tokenWeights;
 
@@ -29,15 +36,10 @@ contract ETF is ERC20, Ownable, ReentrancyGuard, Pausable {
     event Withdraw(address indexed user, uint256 share);
     
     constructor(
-        address[] memory tokens,
-        uint256[] memory weights,
-        string memory _symbol, 
-        string memory _name
     ) 
         ERC20(_name, _symbol)
     {
-        allWhitelistedTokens = tokens;
-        uint256 count = tokens.length;
+        uint256 count = allWhitelistedTokens.length;
         feeRecipient = msg.sender;
         for(uint256 i = 0; i < count; i++) {
             tokenWeights[tokens[i]] = weights[i];
