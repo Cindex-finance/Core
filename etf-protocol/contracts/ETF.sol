@@ -54,21 +54,19 @@ contract ETF is ERC20, Ownable, ReentrancyGuard, Pausable {
         feeRecipient = _feeRecipient;
     }
 
-    function deposit(uint256[] memory amounts) external onlyEOA nonReentrant whenNotPaused {
-        uint256 count = amounts.length;
-        require(allWhitelistedTokensLength() == count, 'request param error');
-        uint256 total = 0;
+    function deposit(uint256 amount) external onlyEOA nonReentrant whenNotPaused {
+        uint256 count = allWhitelistedTokensLength();
+        uint256[] memory amounts = new uint256[](count);
         for(uint256 i = 0; i < count; i++) {
-            total = total.add(amounts[i]);
+            address token = allWhitelistedTokens[i];
+            uint256 _amount = amount;
+            if (i != 0){
+                _amount = amount * tokenWeights[token] / tokenWeights[allWhitelistedTokens[0]];
+            }
+            TransferHelper.safeTransferFrom(token, msg.sender, address(this), _amount);
+            amounts[i] = _amount;
         }
-        for(uint256 i = 0; i < count; i++) {
-            uint256 percentage = round(amounts[i] * 1e8 / total, 5);
-            require(tokenWeights[allWhitelistedTokens[i]] == percentage, 'amounts percentage mismatch!');
-        }
-        for(uint256 i = 0; i < count; i++) {
-            TransferHelper.safeTransferFrom(allWhitelistedTokens[i], msg.sender, address(this), amounts[i]);
-        }
-        _mint(msg.sender, amounts[0]);
+        _mint(msg.sender, amount);
         emit Deposit(msg.sender, allWhitelistedTokens, amounts);
     }
 
@@ -97,16 +95,6 @@ contract ETF is ERC20, Ownable, ReentrancyGuard, Pausable {
             TransferHelper.safeTransfer(token, msg.sender, amount);
         }
         emit Withdraw(msg.sender, share);
-    }
-    
-    function round(uint256 num, uint256 decimals) private pure returns (uint256) {
-        uint256 factor = 10 ** decimals;
-        uint256 roundedNum = (num / factor) * factor;
-        uint256 remainder = num % factor;
-        if (remainder > 0 && remainder >= factor / 2) {
-            roundedNum += factor;
-        }
-        return roundedNum / factor;
     }
 
     function allWhitelistedTokensLength() public view returns(uint256) {
