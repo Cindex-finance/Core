@@ -1,5 +1,6 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("hardhat-contract-sizer");
+require("@nomicfoundation/hardhat-verify");
 require('dotenv').config();
 
 function mnemonic() {
@@ -32,5 +33,20 @@ module.exports = {
       url: 'https://bsc-testnet.public.blastapi.io',
       accounts: mnemonic()
     }
+  },
+  etherscan: {
+    apiKey: {
+      goerli: "FGNQSRF5IFKBN2ZDWDQ76M3U8DJAG785Y9"
+    },
+    customChains: [
+      {
+        network: "goerli",
+        chainId: 5,
+        urls: {
+          apiURL: "https://api-goerli.etherscan.io/api",
+          browserURL: "https://goerli.etherscan.io"
+        }
+      }
+    ]
   }
 };
