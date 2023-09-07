@@ -64,9 +64,37 @@ const updatePrice = async() => {
     const linkReceipt = await linkOracle2.updateAnswer(linkPrice);
     await linkReceipt.wait();
     console.log(`Link update price tx: ${linkReceipt.hash}`);
-
 }
 
+const transfer = async(user, amount) => {
+    const stETH = data.stETH.address;
+    const matic = data.MATIC.address;
+    const aave = data.AAVE.address;
+    const uni = data.UNI.address;
+    const link = data.LINK.address;
+    const stETHToken = new ethers.Contract(stETH, tokenABI, wallet);
+    const maticToken = new ethers.Contract(matic, tokenABI, wallet);
+    const aaveToken = new ethers.Contract(aave, tokenABI, wallet);
+    const uniToken = new ethers.Contract(uni, tokenABI, wallet);
+    const linkToken = new ethers.Contract(link, tokenABI, wallet);
+    // amount = ethers.parseEther(amount).toString();
+    // console.log("amount:", amount);
+    const receipt = await stETHToken.transfer(user, ethers.parseEther(amount));
+    await receipt.wait();
+    console.log(`stETH transfer bank: ${bank} tx: ${receipt.hash}`);
+    const receipt2 = await maticToken.transfer(user, ethers.parseEther(amount));
+    await receipt2.wait();
+    console.log(`matic transfer bank: ${bank} tx: ${receipt2.hash}`);
+    const receipt3 = await aaveToken.transfer(user, ethers.parseEther(amount));
+    await receipt3.wait();  
+    console.log(`aave transfer bank: ${bank} tx: ${receipt3.hash}`);
+    const receipt4 = await uniToken.transfer(user, ethers.parseEther(amount));
+    await receipt4.wait();
+    console.log(`uni transfer bank: ${bank} tx: ${receipt4.hash}`);
+    const receipt5 = await linkToken.transfer(user, ethers.parseEther(amount));
+    await receipt5.wait();
+    console.log(`link transfer bank: ${bank} tx: ${receipt5.hash}`);
+}
 
 const approve = async(bank) => {
     const stETH = data.stETH.address;
@@ -128,7 +156,8 @@ const adjustTargetRatios = async(targetRatios) => {
 
 const getPoolAmounts = async() => {
     const amounts = await bankContract.getPoolAmounts();
-    console.log(`amounts: ${amounts}`);
+    console.log(`poolAmounts: ${amounts}`);
+    return amounts;
 }
 
 const calDecreaseCoins = async(amount) => {
@@ -165,7 +194,7 @@ const totalValue = async() => {
 
 const calDeltaAmounts = async() => {
     const amounts = await bankContract.calDeltaAmounts();
-    console.log(`amounts: ${amounts}`)
+    console.log(`deltaAmounts: ${amounts}`)
     return amounts;
 }
 
@@ -180,11 +209,42 @@ const calValue = async(amounts, prices) => {
     console.log(`total: ${total} ${total/totalVal}`);
 }
 
+const calDecreaseDeltaAmounts = async() => {
+    const amounts = await getPoolAmounts();
+    const isRebalanced = await bankContract.isRebalanced();
+    console.log("isRebalanced:", isRebalanced);
+    var K1 = []
+    var K = []
+    for(var i=0;i<5;i++){
+        K1[i] = await bankContract.targetRatios(i);
+        K[i] = await bankContract.currentRatios(i);
+    }
+    console.log(K1);
+    console.log("K:", K);
+    const count = 5;
+    var T1 = amounts;
+    for(var i=0;i<count;i++) {
+        var T_tmp = [];
+        for(var j=0;j<count;j++) {
+            T_tmp[j] = K1[j] * amounts[i] / K1[i];
+        }
+        if (T_tmp[0] < T1[0]) {
+            T1 = T_tmp;
+        }
+    }
+    var temp = []
+    for(var i=0;i<count;i++){
+        temp[i] = amounts[i] - T1[i]
+    }
+    console.log("T:", temp);
+    return temp;
+}
+
 const Trans = async() => {
     // await approve(bank);
     const gap = await queryMaxGapCoin();
     const amounts = await calIncreaseCoins(gap, ethers.parseEther("100"));
-    // const prices = await getPrices();
+    const prices = await getPrices();
     // var total = new BigNumber(0);
     // const amt = amounts[gap[0]];
     // for(var i=0;i<5;i++) {
@@ -194,16 +254,20 @@ const Trans = async() => {
     //     .div(new BigNumber(10 ** parseInt(prices[1][i]))).div(new BigNumber(amt)));
     // }
     // console.log(`total: ${total.toString()}`)
-    // await deposit(gap, ethers.parseEther("7"));
-    // await totalSupply();
-    // await getPoolAmounts();
-    // await calDecreaseCoins("26894243556771813000000");
-    // await withdraw("26894243556771813000000");
+    // const res = await bankContract.getFunction('deposit').staticCall(gap[0], gap[1], ethers.parseEther("1"));
+    // console.log(`res: ${res}`)
+    // await deposit(gap, ethers.parseEther("100"));
+    await totalSupply();
+    // const deltaAmounts = await getPoolAmounts();
+    await calDecreaseCoins("48112558929424820000000");
+    await withdraw("48112558929424820000000");
     // await updatePrice();
-    // await adjustTargetRatios([80,300,400,600,600]);
+    // await adjustTargetRatios([120,300,100,400,700]);//[100,200,150,500,820]
     // const deltaAmounts = await calDeltaAmounts();
-    // await calValue(deltaAmounts, prices);
+    const deltaAmounts = await calDecreaseDeltaAmounts();
+    await calValue(deltaAmounts, prices);
     // await totalValue();
+    // await transfer('0x495e522b41e90edb265411479886b569d7e8de96', "100");
 }
 Trans().then(() => process.exit(0)).catch((error) => {
     console.error(error);

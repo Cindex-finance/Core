@@ -23,10 +23,6 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
 
     mapping (address => address) public oracles;
 
-    uint256 public totalTokenWeights;
-
-    uint256 public managerRedeemFee = 0;
-
     address public feeRecipient;
 
     uint256[] public currentRatios;
@@ -66,15 +62,6 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
         _;
     }
 
-    function updateFeeRecipient(address _feeRecipient) external onlyOwner {
-        feeRecipient = _feeRecipient;
-    }
-
-    function updateFee(uint256 fee) external onlyOwner {
-        require(fee > 0 && fee < 1000, "fee is unreasonable");
-        managerRedeemFee = fee;
-    }
-
     function updateOracles(address[] memory _oracles) external onlyOwner {
         uint256 count = assets.length;
         for(uint256 i = 0; i < count; i++) {
@@ -82,7 +69,20 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
         }
     }
 
-    function deposit(uint256 index, address coin, uint256 amount) external onlyEOA nonReentrant whenNotPaused {
+    function deposit(uint256 index, address coin, uint256 amount) external onlyEOA nonReentrant whenNotPaused returns(uint256){
+        (uint256 share, uint256[] memory amounts) = calShare(index, coin, amount);
+        for(uint256 i = 0; i < amounts.length; i++) {
+            if (amounts[i] > 0) {
+                TransferHelper.safeTransferFrom(assets[i], msg.sender, address(this), amounts[i]);
+            }
+        }
+        updateRebalanced();
+        _mint(msg.sender, share);
+        emit Deposit(msg.sender, share, assets, amounts, isRebalanced);
+        return share;
+    }
+
+    function calShare(uint256 index, address coin, uint256 amount) public view returns(uint256, uint256[] memory) {
         uint256[] memory ratios = calIncreaseCoins(index, coin, amount);
         uint256 count = ratios.length;
         uint256[] memory amounts = new uint256[](count);
@@ -91,18 +91,15 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
         for(uint256 i = 0; i < count; i++) {
             amounts[i] = amount * ratios[i] * assetDecimals[assets[i]] / assetDecimals[coin] / PRECISION;
             value = value + amounts[i] * prices[i] / (10 ** decimals[i]);
-            if (amounts[i] > 0) {
-                TransferHelper.safeTransferFrom(assets[i], msg.sender, address(this), amounts[i]);
-            }
         }
-        if (managerRedeemFee > 0) {
-            uint256 fee = value * managerRedeemFee / FACTOR;
-            value = value - fee;
-            _mint(feeRecipient, fee);
-        }
-        updateRebalanced();
-        _mint(msg.sender, value);
-        emit Deposit(msg.sender, value, assets, amounts, isRebalanced);
+        return (totalSupply() > 0 ? sharePrePrice() * value / PRECISION : value, amounts);
+    }
+
+    function sharePrePrice() internal view returns(uint256) {
+        uint256[] memory poolAmounts = getPoolAmounts();
+        (uint256[] memory prices, uint8[] memory decimals) = getPrices();
+        uint256 value = Formula.dot(poolAmounts, prices, decimals);
+        return totalSupply() * PRECISION / value;
     }
 
     function updateRebalanced() internal {
@@ -111,13 +108,17 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
             uint256[] memory deltaAmounts = Formula.calDeltaAmounts(amounts, targetRatios);
             uint256 count = amounts.length;
             uint256 mistake = 0;
+            uint256[] memory ratios = new uint256[](count);
             for(uint256 i = 0; i < count; i++) {
                 uint256 newAmount = deltaAmounts[i] + amounts[i];
-                mistake = deltaAmounts[i] / newAmount * FACTOR <= DEVIATION ? 0 : 1;
+                mistake += deltaAmounts[i] / newAmount * FACTOR <= DEVIATION ? 0 : 1;
+                if (mistake == 0) {
+                    ratios[i] = amounts[i] * PRECISION / amounts[0];
+                }
             }
             if (mistake == 0) {
                 isRebalanced = false;
-                currentRatios = targetRatios;
+                currentRatios = ratios;
                 emit UpdateRatio(currentRatios, targetRatios);
             }
         }
@@ -140,7 +141,7 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
         emit Withdraw(msg.sender, share, coins, amounts, isRebalanced);
     }
 
-    function adjustTargetRatios(uint256 [] memory _targetRatios) external onlyOwner nonReentrant whenNotPaused {
+    function adjustTargetRatios(uint256[] memory _targetRatios) external onlyOwner nonReentrant whenNotPaused {
         targetRatios = _targetRatios;
         isRebalanced = true;
         emit UpdateRatio(currentRatios, _targetRatios);
@@ -174,7 +175,7 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
 
     function calGapCoin() internal view returns (uint256[] memory, uint256, address) {
         if (isRebalanced) {
-            uint256[] memory amounts =  getPoolAmounts();
+            uint256[] memory amounts = getPoolAmounts();
             (uint256[] memory prices,) = getPrices();
             (uint256[] memory amt, uint256 index) = Formula.calMaxGapCoin(amounts, targetRatios, prices);
             return (amt, index, assets[index]);
@@ -188,7 +189,7 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
         uint256[] memory ratios = new uint256[](count);
         if (isRebalanced) {
             (uint256[] memory deltaAmounts, uint256 _index, address _coin) = calGapCoin();
-            require(_index == index || _coin == coin, "params is wrong");
+            require(_index == index && _coin == coin, "params is wrong");
             uint256[] memory amounts =  getPoolAmounts();
             uint256[] memory increaseAmts = Formula.calIncrease(amounts, targetRatios, deltaAmounts, index, amount);
             uint256 maxAmount = increaseAmts[index];
@@ -205,30 +206,27 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
     }
 
     function calDecreaseCoins(uint256 share) public view returns(address[] memory, uint256[] memory) {
-        bool flag = share == totalSupply();
+        uint256 total = totalSupply();
+        bool flag = share == total;
         uint256 count = assets.length;
         address[] memory coins = new address[](count);
         uint256[] memory amounts = new uint256[](count);
-        uint256 totalSupply = totalSupply();
-        if (isRebalanced) {
+        if (flag) {
+            for(uint256 i = 0; i < count; i++) {
+                coins[i] = assets[i];
+                amounts[i] = IERC20(assets[i]).balanceOf(address(this));
+            }
+        } else if (isRebalanced) {
             uint256[] memory poolAmounts = getPoolAmounts();
-            (uint256[] memory prices, ) = getPrices();
-            uint256 value = Formula.dot(poolAmounts, prices);
-            uint256 lastValue = (1 - share / totalSupply) * value;
+            (uint256[] memory prices, uint8[] memory decimals) = getPrices();
+            uint256 value = Formula.dot(poolAmounts, prices, decimals);
+            uint256 lastValue = value - share * value / total;
             coins = assets;
-            amounts = Formula.calDecrease(poolAmounts, targetRatios, prices, lastValue);
-
+            amounts = Formula.calDecrease(poolAmounts, targetRatios, prices, decimals, lastValue);
         } else {
-            if (flag) {
-                for(uint256 i = 0; i < count; i++) {
-                    coins[i] = assets[i];
-                    amounts[i] = IERC20(assets[i]).balanceOf(address(this));
-                }
-            } else {
-                for(uint256 i = 0; i < count; i++) {
-                    coins[i] = assets[i];
-                    amounts[i] = IERC20(assets[i]).balanceOf(address(this)) * share / totalSupply;
-                }
+            for(uint256 i = 0; i < count; i++) {
+                coins[i] = assets[i];
+                amounts[i] = IERC20(assets[i]).balanceOf(address(this)) * share / total;
             }
         }
         return (coins, amounts);

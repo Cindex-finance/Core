@@ -68,35 +68,35 @@ library Formula {
         return t;
     }
 
-    function dot(uint256[] memory a, uint256[] memory b) internal pure returns (uint256) {
+    function dot(uint256[] memory amounts, uint256[] memory prices, uint8[] memory decimals) internal pure returns (uint256) {
         uint256 result = 0;
-        for (uint256 i = 0; i < a.length; i++) {
-            result += a[i] * b[i];
+        for (uint256 i = 0; i < amounts.length; i++) {
+            result += amounts[i] * prices[i] / (10 ** decimals[i]);
         }
         return result;
     }
 
-    function calMultiple(uint256[] memory ratios, uint256[] memory prices, uint256 value, uint256[] memory amounts) internal pure returns (uint256) {
+    function calMultiple(uint256[] memory ratios, uint256[] memory prices, uint8[] memory decimals, uint256 value, uint256[] memory amounts) internal pure returns (uint256) {
         require(ratios.length == prices.length && ratios.length == amounts.length, "Invalid input length");
         
         uint256 dotProductKP = 0;
         uint256 dotProductTP = 0;
         
         for (uint256 i = 0; i < ratios.length; i++) {
-            dotProductKP += ratios[i] * prices[i];
-            dotProductTP += amounts[i] * prices[i];
+            dotProductKP += ratios[i] * prices[i] / (10 ** decimals[i]) * 1e18;
+            dotProductTP += amounts[i] * prices[i] / (10 ** decimals[i]);
         }
         
-        return (value - dotProductTP) / dotProductKP;
+        return (value - dotProductTP) * 1e18 / dotProductKP;
     }
 
-    function calDecrease(uint256[] memory amounts, uint256[] memory targetRatios, uint256[] memory prices, uint256 value) internal pure returns (uint256[] memory) {
+    function calDecrease(uint256[] memory amounts, uint256[] memory targetRatios, uint256[] memory prices, uint8[] memory decimals, uint256 value) internal pure returns (uint256[] memory) {
         uint256[] memory Kt = targetRatios;
         uint256 num = amounts.length;
         uint256[] memory T1 = new uint256[](num);
         uint256[] memory res = new uint256[](num);
         while (true) {
-            uint256 mul_t = calMultiple(Kt, prices, value, T1);
+            uint256 mul_t = calMultiple(Kt, prices, decimals, value, T1);
             uint256[] memory Tt = new uint256[](num);
             int256[] memory F1 = new int256[](num);
             bool isReduce = false;
@@ -125,6 +125,4 @@ library Formula {
         }
         return res;
     }
-
-
 }
