@@ -19,7 +19,7 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
 
     uint256 internal constant YEAR = 365 * 24 * 3600;
 
-    uint256 internal constant FIXED_ANNUAL_APR = 3 * PRECISION;
+    uint256 internal constant FIXED_ANNUAL_APR = 3 * 1e16;
 
     address[] public assets;
 
