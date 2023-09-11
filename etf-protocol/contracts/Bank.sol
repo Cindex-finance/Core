@@ -17,11 +17,17 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
 
     uint256 internal constant DEVIATION = 50;
 
+    uint256 internal constant YEAR = 365 * 24 * 3600;
+
+    uint256 internal constant FIXED_ANNUAL_APR = 3 * PRECISION;
+
     address[] public assets;
 
     mapping (address => uint8) public assetDecimals;
 
     mapping (address => address) public oracles;
+
+    uint256 public lastUpdatedTime;
 
     address public feeRecipient;
 
@@ -77,6 +83,7 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
             }
         }
         updateRebalanced();
+        calFee();
         _mint(msg.sender, share);
         emit Deposit(msg.sender, share, assets, amounts, isRebalanced);
         return share;
@@ -105,7 +112,7 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
     function updateRebalanced() internal {
         if (isRebalanced) {
             uint256[] memory amounts = getPoolAmounts();
-            uint256[] memory deltaAmounts = Formula.calDeltaAmounts(amounts, targetRatios);
+            uint256[] memory deltaAmounts = Formula.calDeltaAmounts(currentRatios, targetRatios, amounts);
             uint256 count = amounts.length;
             uint256 mistake = 0;
             uint256[] memory ratios = new uint256[](count);
@@ -124,12 +131,24 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
         }
     }
 
+    function calFee() internal {
+        if (lastUpdatedTime == 0) {
+            lastUpdatedTime = block.timestamp;
+            return;
+        }
+        uint256 time = block.timestamp - lastUpdatedTime;
+        uint256 supply = totalSupply();
+        uint256 fee = supply * time * FIXED_ANNUAL_APR  / YEAR / PRECISION;
+        _mint(feeRecipient, fee);
+    }
+
     function calDeltaAmounts() external view returns(uint256[] memory) {
-        return Formula.calDeltaAmounts(getPoolAmounts(), targetRatios);
+        return Formula.calDeltaAmounts(currentRatios, targetRatios, getPoolAmounts());
     }
     
     function withdraw(uint256 share) external onlyEOA nonReentrant whenNotPaused {
         (address[] memory coins, uint256[] memory amounts) = calDecreaseCoins(share);
+        calFee();
         _burn(msg.sender, share);
         uint256 count = coins.length;
         for(uint256 i = 0; i < count; i++) {
@@ -176,8 +195,8 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
     function calGapCoin() internal view returns (uint256[] memory, uint256, address) {
         if (isRebalanced) {
             uint256[] memory amounts = getPoolAmounts();
-            (uint256[] memory prices,) = getPrices();
-            (uint256[] memory amt, uint256 index) = Formula.calMaxGapCoin(amounts, targetRatios, prices);
+            (uint256[] memory prices, uint8[] memory decimals) = getPrices();
+            (uint256[] memory amt, uint256 index) = Formula.calMaxGapCoin(currentRatios, targetRatios, amounts, prices, decimals);
             return (amt, index, assets[index]);
         } else {
             return (currentRatios, 0, assets[0]);

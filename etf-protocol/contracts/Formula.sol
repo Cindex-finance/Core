@@ -4,49 +4,51 @@ pragma solidity ^0.8.9;
 
 library Formula {
 
-    function calDeltaAmounts(uint256[] memory amounts, uint256[] memory targetRatios) internal pure returns(uint256[] memory) {
-        uint256 num = amounts.length;
-        uint256[] memory amounts1 = new uint256[](num);
-        for (uint256 i = 0; i < num; i++) {
-            uint256[] memory amountsTmp = new uint256[](num);
-            for (uint256 j = 0; j < num; j++) {
-                amountsTmp[j] = (targetRatios[j] * amounts[i]) / targetRatios[i];
-            }
-            if (amountsTmp[0] > amounts1[0]) {
-                amounts1 = amountsTmp;
+    function calDeltaAmounts(uint256[] memory currentRatios, uint256[] memory targetRatios, uint256[] memory amounts) internal pure returns(uint256[] memory) {
+        uint256 num = currentRatios.length;
+        int256 minDeltaRatio = 1e18;
+        uint256 minIndex = 0;
+        for(uint256 i = 0; i < num; i++) {
+            uint256 tmp = targetRatios[i] * currentRatios[0] / targetRatios[0];
+            int256 deltaRatio = tmp > currentRatios[i] ? int256((tmp - currentRatios[i]) * 1e18 / currentRatios[i]) : -int256((currentRatios[i] - tmp) * 1e18 / currentRatios[i]);
+            if (deltaRatio < minDeltaRatio) {
+                minDeltaRatio = deltaRatio;
+                minIndex = i;
             }
         }
-        uint256[] memory deltaAmt = new uint256[](num);
-        for (uint i = 0; i < num; i++) {
-            deltaAmt[i] = amounts1[i] - amounts[i];
+        uint256[] memory deltaAmts = new uint256[](num);
+        for(uint256 i = 0; i < num; i++) {
+            uint256 amount = amounts[minIndex] * targetRatios[i] / targetRatios[minIndex];
+            deltaAmts[i] = amount > amounts[i] ? amount - amounts[i] : 0;
         }
-        return deltaAmt;
-    } 
+        return deltaAmts;
+    }
 
-    function calMaxGapCoin(uint256[] memory amounts, uint256[] memory targetRatios, uint256[] memory prices) internal pure returns (uint256[] memory, uint256) {
-        uint256 num = amounts.length;
-        uint256[] memory amounts1 = new uint256[](num);
-        for (uint256 i = 0; i < num; i++) {
-            uint256[] memory amountsTmp = new uint256[](num);
-            for (uint256 j = 0; j < num; j++) {
-                amountsTmp[j] = (targetRatios[j] * amounts[i]) / targetRatios[i];
-            }
-            if (amountsTmp[0] > amounts1[0]) {
-                amounts1 = amountsTmp;
+    function calMaxGapCoin(uint256[] memory currentRatios, uint256[] memory targetRatios, uint256[] memory amounts, uint256[] memory prices, uint8[] memory decimals) internal pure returns(uint256[] memory, uint256) {
+        uint256 num = currentRatios.length;
+        int256 minDeltaRatio = 1e18;
+        uint256 minIndex = 0;
+        for(uint256 i = 0; i < num; i++) {
+            uint256 tmp = targetRatios[i] * currentRatios[0] / targetRatios[0];
+            int256 deltaRatio = tmp > currentRatios[i] ? int256((tmp - currentRatios[i]) * 1e18 / currentRatios[i]) : -int256((currentRatios[i] - tmp) * 1e18 / currentRatios[i]);
+            if (deltaRatio < minDeltaRatio) {
+                minDeltaRatio = deltaRatio;
+                minIndex = i;
             }
         }
-        uint256[] memory deltaAmt = new uint256[](num);
-        uint256[] memory deltaValue = new uint256[](num);
         uint256 maxIndex = 0;
-        for (uint i = 0; i < num; i++) {
-            deltaAmt[i] = amounts1[i] - amounts[i];
-            deltaValue[i] = deltaAmt[i] * prices[i];
-            uint256 j = i + 1;
-            if (j < num && deltaValue[i] > deltaValue[maxIndex]) {
+        uint256[] memory deltaAmts = new uint256[](num);
+        uint256 maxValue = 0;
+        for(uint256 i = 0; i < num; i++) {
+            uint256 amount = amounts[minIndex] * targetRatios[i] / targetRatios[minIndex];
+            deltaAmts[i] = amount > amounts[i] ? amount - amounts[i] : 0;
+            uint256 deltaValue = deltaAmts[i] * prices[i] / decimals[i];
+            if (deltaValue > maxValue) {
+                maxValue = deltaValue;
                 maxIndex = i;
             }
         }
-        return (deltaAmt, maxIndex);
+        return (deltaAmts, maxIndex);
     }
 
 

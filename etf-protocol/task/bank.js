@@ -259,10 +259,10 @@ const Trans = async() => {
     // await deposit(gap, ethers.parseEther("100"));
     await totalSupply();
     // const deltaAmounts = await getPoolAmounts();
-    await calDecreaseCoins("48112558929424820000000");
-    await withdraw("48112558929424820000000");
-    // await updatePrice();
-    // await adjustTargetRatios([120,300,100,400,700]);//[100,200,150,500,820]
+    // await calDecreaseCoins("48112558929424820000000");
+    // await withdraw("48112558929424820000000");
+    await updatePrice();
+    // await adjustTargetRatios([100,400,200,400,800]);//[100,200,150,500,820]
     // const deltaAmounts = await calDeltaAmounts();
     const deltaAmounts = await calDecreaseDeltaAmounts();
     await calValue(deltaAmounts, prices);
