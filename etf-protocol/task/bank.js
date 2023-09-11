@@ -202,9 +202,12 @@ const calValue = async(amounts, prices) => {
     const totalVal = await totalValue();
     var total = new BigNumber(0);
     for(var i=0;i<5;i++) {
-        total = total.add(new BigNumber(amounts[i])
-        .mul(new BigNumber(prices[0][i]))
-        .div(new BigNumber(10 ** parseInt(prices[1][i]))));
+        if (amounts[i] > 0){
+            total = total.add(new BigNumber(amounts[i])
+            .mul(new BigNumber(prices[0][i]))
+            .div(new BigNumber(10 ** parseInt(prices[1][i]))));
+        }
+        
     }
     console.log(`total: ${total} ${total/totalVal}`);
 }
@@ -256,18 +259,18 @@ const Trans = async() => {
     // console.log(`total: ${total.toString()}`)
     // const res = await bankContract.getFunction('deposit').staticCall(gap[0], gap[1], ethers.parseEther("1"));
     // console.log(`res: ${res}`)
-    // await deposit(gap, ethers.parseEther("100"));
-    await totalSupply();
+    // await deposit(gap, ethers.parseEther("10"));
+    // await totalSupply();
     // const deltaAmounts = await getPoolAmounts();
-    // await calDecreaseCoins("48112558929424820000000");
-    // await withdraw("48112558929424820000000");
-    await updatePrice();
-    // await adjustTargetRatios([100,400,200,400,800]);//[100,200,150,500,820]
+    // const deltaAmounts = (await calDecreaseCoins("3532797277656441000000"))[1];
+    // await withdraw("3532797277656441000000");
+    // await updatePrice();
+    // await adjustTargetRatios(["500000000000000000", "500000000000000000", "500000000000000000", "500000000000000000", "8000000000000000000"]);//[100,200,150,500,820]
     // const deltaAmounts = await calDeltaAmounts();
     const deltaAmounts = await calDecreaseDeltaAmounts();
     await calValue(deltaAmounts, prices);
     // await totalValue();
-    // await transfer('0x495e522b41e90edb265411479886b569d7e8de96', "100");
+    // await transfer('0xA0852222aBCfaa63F4DB57d3E70db6E376Bbb374', "10000");
 }
 Trans().then(() => process.exit(0)).catch((error) => {
     console.error(error);

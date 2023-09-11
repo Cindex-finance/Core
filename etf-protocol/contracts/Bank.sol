@@ -118,7 +118,7 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
             uint256[] memory ratios = new uint256[](count);
             for(uint256 i = 0; i < count; i++) {
                 uint256 newAmount = deltaAmounts[i] + amounts[i];
-                mistake += deltaAmounts[i] / newAmount * FACTOR <= DEVIATION ? 0 : 1;
+                mistake += deltaAmounts[i] * FACTOR / newAmount <= DEVIATION ? 0 : 1;
                 if (mistake == 0) {
                     ratios[i] = amounts[i] * PRECISION / amounts[0];
                 }

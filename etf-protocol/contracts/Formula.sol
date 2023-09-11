@@ -85,11 +85,11 @@ library Formula {
         uint256 dotProductTP = 0;
         
         for (uint256 i = 0; i < ratios.length; i++) {
-            dotProductKP += ratios[i] * prices[i] / (10 ** decimals[i]) * 1e18;
+            dotProductKP += ratios[i] * prices[i] * 1e18 / (10 ** decimals[i]);
             dotProductTP += amounts[i] * prices[i] / (10 ** decimals[i]);
         }
         
-        return (value - dotProductTP) * 1e18 / dotProductKP;
+        return (value - dotProductTP) * 1e36 / dotProductKP;
     }
 
     function calDecrease(uint256[] memory amounts, uint256[] memory targetRatios, uint256[] memory prices, uint8[] memory decimals, uint256 value) internal pure returns (uint256[] memory) {
@@ -103,7 +103,7 @@ library Formula {
             int256[] memory F1 = new int256[](num);
             bool isReduce = false;
             for (uint256 j = 0; j < num; j++) {
-                Tt[j] = Kt[j] > 0 ? mul_t * Kt[j] : amounts[j];
+                Tt[j] = Kt[j] > 0 ? mul_t * Kt[j] / 1e18 : amounts[j];
                 if (Tt[j] > amounts[j]) {
                     isReduce = true;
                 }
@@ -119,7 +119,7 @@ library Formula {
                 }
             } else {
                 for (uint256 j = 0; j < num; j++) {
-                    Tt[j] = Kt[j] > 0 ? mul_t * Kt[j] : amounts[j];
+                    Tt[j] = Kt[j] > 0 ? mul_t * Kt[j] / 1e18 : amounts[j];
                     res[j] = amounts[j] - Tt[j];
                 }
                 break;
