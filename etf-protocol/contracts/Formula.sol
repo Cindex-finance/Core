@@ -4,6 +4,12 @@ pragma solidity ^0.8.9;
 
 library Formula {
 
+    /*
+     *@dev calculate the number of missing tokens
+     *@param currentRatios current proportion
+     *@param amounts current number of tokens
+     *@param targetRatio target proportion
+     */
     function calDeltaAmounts(uint256[] memory currentRatios, uint256[] memory targetRatios, uint256[] memory amounts) internal pure returns(uint256[] memory) {
         uint256 num = currentRatios.length;
         int256 minDeltaRatio = 1e18;
@@ -24,6 +30,14 @@ library Formula {
         return deltaAmts;
     }
 
+    /*
+     *@dev calculate the number of missing tokens and the maximum missing token index
+     *@param currentRatios current proportion
+     *@param targetRatio target proportion
+     *@param amounts current number of tokens
+     *@param prices token prices
+     *@param decimals  token precision
+     */
     function calMaxGapCoin(uint256[] memory currentRatios, uint256[] memory targetRatios, uint256[] memory amounts, uint256[] memory prices, uint8[] memory decimals) internal pure returns(uint256[] memory, uint256) {
         uint256 num = currentRatios.length;
         int256 minDeltaRatio = 1e18;
@@ -51,12 +65,19 @@ library Formula {
         return (deltaAmts, maxIndex);
     }
 
-
+    /*
+     *@dev calculate token ratio based on user added tokens
+     *
+     *@param amounts current number of tokens
+     *@param targetRatio target proportion
+     *@param deltaAmt  missing tokens
+     *@param index maximum missing tokens index
+     *@param value user adding Tokens
+     */
     function calIncrease(uint256[] memory amounts, uint256[] memory targetRatios, uint256[] memory deltaAmt, uint256 index, uint256 value) internal pure returns (uint256[] memory) {
         uint256 num = amounts.length;
         uint256[] memory t = new uint256[](num);
         t[index] = value;
-        
         if (t[index] > deltaAmt[index]) {
             for (uint256 i = 0; i < num; i++) {
                 t[i] = deltaAmt[i] + targetRatios[i] * (t[index] - deltaAmt[index]) / targetRatios[index];
@@ -70,6 +91,14 @@ library Formula {
         return t;
     }
 
+    /*
+     *@dev calculate the value of the pool
+     *
+     *@param amounts current number of tokens
+     *@param targetRatio target proportion
+     *@param prices token prices
+     *@param decimals  token precision
+     */
     function dot(uint256[] memory amounts, uint256[] memory prices, uint8[] memory decimals) internal pure returns (uint256) {
         uint256 result = 0;
         for (uint256 i = 0; i < amounts.length; i++) {
@@ -78,6 +107,15 @@ library Formula {
         return result;
     }
 
+    /*
+     *@dev calculate token constant
+     *
+     *@param decreaseTokenRatio The proportion of tokens that need to be reduced
+     *@param prices token prices
+     *@param decimals  token Precision
+     *@param lastValue remaining pool value
+     *@param keepAmounts unchanged token amounts
+     */
     function calMultiple(uint256[] memory ratios, uint256[] memory prices, uint8[] memory decimals, uint256 value, uint256[] memory amounts) internal pure returns (uint256) {
         require(ratios.length == prices.length && ratios.length == amounts.length, "Invalid input length");
         
@@ -92,6 +130,15 @@ library Formula {
         return (value - dotProductTP) * 1e36 / dotProductKP;
     }
 
+    /*
+     *@dev calculate the proportion of reduced tokens
+     *
+     *@param amounts current number of tokens
+     *@param targetRatio target proportion
+     *@param prices token prices
+     *@param decimals  token precision
+     *@param lastValue remaining pool value
+     */
     function calDecrease(uint256[] memory amounts, uint256[] memory targetRatios, uint256[] memory prices, uint8[] memory decimals, uint256 value) internal pure returns (uint256[] memory) {
         uint256[] memory Kt = targetRatios;
         uint256 num = amounts.length;

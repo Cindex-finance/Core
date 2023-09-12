@@ -246,7 +246,7 @@ const calDecreaseDeltaAmounts = async() => {
 const Trans = async() => {
     // await approve(bank);
     const gap = await queryMaxGapCoin();
-    const amounts = await calIncreaseCoins(gap, ethers.parseEther("100"));
+    // const amounts = await calIncreaseCoins(gap, ethers.parseEther("10"));
     const prices = await getPrices();
     // var total = new BigNumber(0);
     // const amt = amounts[gap[0]];
@@ -263,11 +263,11 @@ const Trans = async() => {
     // await totalSupply();
     // const deltaAmounts = await getPoolAmounts();
     // const deltaAmounts = (await calDecreaseCoins("3532797277656441000000"))[1];
-    // await withdraw("3532797277656441000000");
+    // await withdraw("9698829497310000000000");
     // await updatePrice();
     // await adjustTargetRatios(["500000000000000000", "500000000000000000", "500000000000000000", "500000000000000000", "8000000000000000000"]);//[100,200,150,500,820]
-    // const deltaAmounts = await calDeltaAmounts();
-    const deltaAmounts = await calDecreaseDeltaAmounts();
+    const deltaAmounts = await calDeltaAmounts();
+    // const deltaAmounts = await calDecreaseDeltaAmounts();
     await calValue(deltaAmounts, prices);
     // await totalValue();
     // await transfer('0xA0852222aBCfaa63F4DB57d3E70db6E376Bbb374', "10000");
