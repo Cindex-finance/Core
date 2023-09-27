@@ -124,8 +124,10 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
      */
     function updateRebalanced() internal {
         if (isRebalanced) {
+            uint256[] memory _currentRatios = currentRatios;
+            uint256[] memory _targetRatios = targetRatios;
             uint256[] memory amounts = getPoolAmounts();
-            uint256[] memory deltaAmounts = Formula.calDeltaAmounts(currentRatios, targetRatios, amounts);
+            uint256[] memory deltaAmounts = Formula.calDeltaAmounts(_currentRatios, _targetRatios, amounts);
             uint256 count = amounts.length;
             uint256 mistake = 0;
             uint256[] memory ratios = new uint256[](count);
@@ -139,7 +141,7 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
             if (mistake == 0) {
                 isRebalanced = false;
                 currentRatios = ratios;
-                emit UpdateRatio(currentRatios, targetRatios);
+                emit UpdateRatio(_currentRatios, targetRatios);
             }
         }
     }
@@ -200,8 +202,9 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
         uint256 count = assets.length;
         uint256[] memory prices = new uint256[](count);
         uint8[] memory decimals = new uint8[](count);
+        address[] memory _assets = assets;
         for(uint256 i = 0; i < count; i++) {
-            AggregatorV3Interface feed = oracles[assets[i]];
+            AggregatorV3Interface feed = oracles[_assets[i]];
             (,int256 price,,,) = feed.latestRoundData();
             prices[i] = uint256(price);
             decimals[i] = feed.decimals();
@@ -232,13 +235,15 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
      *@dev calculate the number of missing tokens and the maximum missing token index
      */
     function calGapCoin() internal view returns (uint256[] memory, uint256, address) {
+        uint256[] memory _targetRatios = targetRatios;
+        uint256[] memory _currentRatios = currentRatios;
         if (isRebalanced) {
             uint256[] memory amounts = getPoolAmounts();
             (uint256[] memory prices, uint8[] memory decimals) = getPrices();
-            (uint256[] memory amt, uint256 index) = Formula.calMaxGapCoin(currentRatios, targetRatios, amounts, prices, decimals);
+            (uint256[] memory amt, uint256 index) = Formula.calMaxGapCoin(_currentRatios, _targetRatios, amounts, prices, decimals);
             return (amt, index, assets[index]);
         } else {
-            return (currentRatios, 0, assets[0]);
+            return (_currentRatios, 0, assets[0]);
         }
     }
 
@@ -253,18 +258,20 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
         uint256 count = assets.length;
         uint256[] memory ratios = new uint256[](count);
         if (isRebalanced) {
+            uint256[] memory _targetRatios = targetRatios;
             (uint256[] memory deltaAmounts, uint256 _index, address _coin) = calGapCoin();
             require(_index == index && _coin == coin, "params is wrong");
             uint256[] memory amounts =  getPoolAmounts();
-            uint256[] memory increaseAmts = Formula.calIncrease(amounts, targetRatios, deltaAmounts, index, amount);
+            uint256[] memory increaseAmts = Formula.calIncrease(amounts, _targetRatios, deltaAmounts, index, amount);
             uint256 maxAmount = increaseAmts[index];
             for(uint256 i = 0; i < count; i++) {
                 ratios[i] = increaseAmts[i] * PRECISION / maxAmount;
             }
         } else {
+            uint256[] memory _currentRatios = currentRatios;
             require(assets[index] == coin, "params is wrong");
             for(uint256 i = 0; i < count; i++) {
-                ratios[i] = currentRatios[i] * PRECISION / currentRatios[0];
+                ratios[i] = _currentRatios[i] * PRECISION / _currentRatios[0];
             }
         }
         return ratios;
@@ -275,7 +282,7 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
      */
     function calDecreaseCoins(uint256 share) public view returns(address[] memory, uint256[] memory) {
         uint256 total = totalSupply();
-        bool flag = share == total;
+        bool flag = share >= total;
         uint256 count = assets.length;
         address[] memory coins = new address[](count);
         uint256[] memory amounts = new uint256[](count);
