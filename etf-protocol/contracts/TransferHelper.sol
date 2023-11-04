@@ -3,6 +3,10 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 library TransferHelper {
+
+    address internal constant NATIVE = address(0);
+    uint256 internal constant LOWER_BOUND_APPROVAL = type(uint96).max / 2;
+
     /// @notice Transfers tokens from the targeted address to the given destination
     /// @notice Errors with 'STF' if transfer fails
     /// @param token The contract address of the token to be transferred
@@ -55,6 +59,14 @@ library TransferHelper {
     function safeTransferETH(address to, uint256 value) internal {
         (bool success, ) = to.call{value: value}(new bytes(0));
         require(success, 'STE');
+    }
+
+    function safeApproveInf(address token, address to) internal {
+        if (token == NATIVE) return;
+        if (IERC20(token).allowance(address(this), to) < LOWER_BOUND_APPROVAL) {
+            safeApprove(token, to, 0);
+            safeApprove(token, to, type(uint256).max);
+        }
     }
 }
 

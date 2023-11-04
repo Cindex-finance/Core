@@ -49,7 +49,7 @@ contract Bank is ERC20, Ownable, ReentrancyGuard, Pausable {
         uint256[] memory _initRatios,
         string memory _symbol, 
         string memory _name
-    ) 
+    ) payable
         ERC20(_name, _symbol)
     {
         assets = _assets;
