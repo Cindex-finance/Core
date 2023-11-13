@@ -21,7 +21,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
 
     uint256 public lastUpdatedTime;
 
-    uint256 public protocolFee = 10;
+    uint256 public protocolFee = 20;
 
     // Support staking coins (usdc,usdt,dai)
     address[] public supportAssets;
@@ -45,6 +45,8 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
     event Deposit(address indexed user, uint256 share, address asset, uint256 amount, string referralCode);
 
     event Withdraw(address indexed user, uint256 share, address asset, uint256 amount);
+
+    event ProtocolFee(uint256 amount0, uint256 amount1);
 
     struct DepositParams {
         address tokenIn;
@@ -172,8 +174,12 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
             //计算这段时间内生息资产
             uint256 sDaiInterestAmount = assetAmounts[SavingsDaiMarket.sDAI] - (sDaiAmount * exchangeRate);
             uint256 sETHInterestAmount = assetAmounts[StEthMarket.stETH] - sETHAmount;
-            TransferHelper.safeTransferFrom(SavingsDaiMarket.sDAI, address(this), PROTOCOL_FEE_RESERVE, sDaiInterestAmount * protocolFee / 100 / 1e18);
-            TransferHelper.safeTransferFrom(StEthMarket.stETH, address(this), PROTOCOL_FEE_RESERVE, sETHInterestAmount * protocolFee / 100);
+            //计算协议费用
+            uint256 sDaiFeeAmount = sDaiInterestAmount * protocolFee / 100 / 1e18;
+            uint256 sETHFeeAmount = sETHInterestAmount * protocolFee / 100;
+            TransferHelper.safeTransferFrom(SavingsDaiMarket.sDAI, address(this), PROTOCOL_FEE_RESERVE, sDaiFeeAmount);
+            TransferHelper.safeTransferFrom(StEthMarket.stETH, address(this), PROTOCOL_FEE_RESERVE, sETHFeeAmount);
+            emit ProtocolFee(sDaiFeeAmount, sETHFeeAmount);
         }
     }
     
