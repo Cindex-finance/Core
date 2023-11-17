@@ -62,23 +62,10 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         string referralCode;
     }
 
-    struct DepositUnderlyingParams {
-        address token0In;
-        uint256 amount0In;
-        address token1In;
-        uint256 amount1In;
-    }
-
     struct WithdrawParams {
         uint256 share;
         address tokenOut;
         ICindexSwap.SwapData[] swapData;
-    }
-
-    struct WithdrawUnderlyingParams {
-        uint256 share;
-        uint256 amount0Out;
-        uint256 amount1Out;
     }
 
     constructor(
