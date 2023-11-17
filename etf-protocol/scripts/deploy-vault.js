@@ -9,7 +9,11 @@ async function deployVault(supportAssets, assetOracles, protocolFeeReserve, name
     const CindexSwap = await ethers.getContractFactory("CindexSwap");
     const cindexSwap = await CindexSwap.deploy();
     console.log("CindexSwap deployed to:", cindexSwap.target);
-    const Vault = await ethers.getContractFactory("Vault");
+    const Vault = await ethers.getContractFactory("Vault", {
+        libraries: {
+            "StEthMarket":"0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84"
+        },
+    });
     const vault = await Vault.deploy(supportAssets, assetOracles, protocolFeeReserve, cindexSwap.target, name, symbol);
     console.log("Vault deployed to:", vault.target);
     return vault.target;
