@@ -42,9 +42,16 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
     address constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address constant STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
 
-    event Deposit(address indexed user, uint256 share, address asset, uint256 amount, string referralCode);
+    // sDAI, stETH
+    address[] public underlyingTokens = [0x83F20F44975D03b1b09e64809B757c47f942BEeA, 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84];
 
-    event Withdraw(address indexed user, uint256 share, address asset, uint256 amount);
+    event Deposit(address indexed user, uint256 share, address asset, uint256 amount, uint256 amount0, uint256 amount1, string referralCode);
+
+    event DepositUnderlying(address indexed user, uint256 share, uint256 amount0, uint256 amount1);
+
+    event Withdraw(address indexed user, uint256 share, address asset, uint256 amount, uint256 amount0, uint256 amount1);
+
+    event WithdrawUnderlying(address indexed user, uint256 share, uint256 amount0, uint256 amount1);
 
     event ProtocolFee(uint256 amount0, uint256 amount1);
 
@@ -55,10 +62,23 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         string referralCode;
     }
 
+    struct DepositUnderlyingParams {
+        address token0In;
+        uint256 amount0In;
+        address token1In;
+        uint256 amount1In;
+    }
+
     struct WithdrawParams {
         uint256 share;
         address tokenOut;
         ICindexSwap.SwapData[] swapData;
+    }
+
+    struct WithdrawUnderlyingParams {
+        uint256 share;
+        uint256 amount0Out;
+        uint256 amount1Out;
     }
 
     constructor(
@@ -123,7 +143,26 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         uint256 share = Formula.dot(newAmounts, prices, decimals) * _sharePrePrice;
         _mint(msg.sender, share);
         updateAssetAmounts();
-        emit Deposit(msg.sender, share, tokenIn, amountIn, referralCode);
+        emit Deposit(msg.sender, share, tokenIn, amountIn, amount0, amount1, referralCode);
+        return share;
+    }
+
+    function depositUnderlying(uint256 amount0In, uint256 amount1In) external onlyEOA nonReentrant whenNotPaused returns (uint256){
+        require(amount0In > 0, 'Amount0InZero');
+        require(amount1In > 0, 'Amount1InZero');
+        uint256 _sharePrePrice = sharePrePrice();
+        address token0In = underlyingTokens[0];
+        address token1In = underlyingTokens[1];
+        TransferHelper.safeTransferFrom(token0In, msg.sender, address(this), amount0In);
+        TransferHelper.safeTransferFrom(token1In, msg.sender, address(this), amount1In);
+        (uint256[] memory prices, uint8[] memory decimals) = getPrices();
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = amount0In;
+        amounts[1] = amount1In;
+        uint256 share = Formula.dot(amounts, prices, decimals) * _sharePrePrice;
+        _mint(msg.sender, share);
+        updateAssetAmounts();
+        emit DepositUnderlying(msg.sender, share, amount0In, amount1In);
         return share;
     }
 
@@ -150,7 +189,23 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         //再将stETH直接swap到目标币
         router.swap(STETH, amount1, swapData[1]);
         updateAssetAmounts();
-        emit Withdraw(msg.sender, share, tokenOut, share);
+        emit Withdraw(msg.sender, share, tokenOut, share, amount0, amount1);
+    }
+
+    function withdrawUnderlying(uint256 share) external onlyEOA nonReentrant whenNotPaused {
+        require(share > 0, 'ShareZero');
+        uint256 totalSupply = totalSupply();
+        uint256[] memory amounts = getPoolAmounts();
+        uint256 amount0Out = amounts[0] * share / totalSupply;
+        uint256 amount1Out = amounts[1] * share / totalSupply;
+        calProtocolFee();
+        _burn(msg.sender, share);
+        address token0Out = underlyingTokens[0];
+        address token1Out = underlyingTokens[1];
+        TransferHelper.safeTransferFrom(token0Out, address(this), msg.sender, amount0Out);
+        TransferHelper.safeTransferFrom(token1Out, address(this), msg.sender, amount1Out);
+        updateAssetAmounts();
+        emit WithdrawUnderlying(msg.sender, share, amount0Out, amount1Out);
     }
 
     function updateAssetAmounts() internal {
