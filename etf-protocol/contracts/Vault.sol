@@ -142,6 +142,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         address token1In = underlyingTokens[1];
         TransferHelper.safeTransferFrom(token0In, msg.sender, address(this), amount0In);
         TransferHelper.safeTransferFrom(token1In, msg.sender, address(this), amount1In);
+        calProtocolFee();
         (uint256[] memory prices, uint8[] memory decimals) = getPrices();
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = amount0In;
