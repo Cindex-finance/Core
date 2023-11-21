@@ -134,23 +134,21 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         return share;
     }
 
-    function depositUnderlying(uint256 amount0In, uint256 amount1In) external onlyEOA nonReentrant whenNotPaused returns (uint256){
-        require(amount0In > 0, 'Amount0InZero');
-        require(amount1In > 0, 'Amount1InZero');
-        uint256 _sharePrePrice = sharePrePrice();
-        address token0In = underlyingTokens[0];
-        address token1In = underlyingTokens[1];
-        TransferHelper.safeTransferFrom(token0In, msg.sender, address(this), amount0In);
-        TransferHelper.safeTransferFrom(token1In, msg.sender, address(this), amount1In);
+    function depositUnderlying(uint256 amount0) external onlyEOA nonReentrant whenNotPaused returns (uint256){
+        require(amount0 > 0, 'Amount0InZero');
         calProtocolFee();
         (uint256[] memory prices, uint8[] memory decimals) = getPrices();
+        uint256 amount1 = amount0 * (prices[0] / (10 ** decimals[0])) * weights[1] / 100 / (prices[1] / (10 ** decimals[1]));
         uint256[] memory amounts = new uint256[](2);
-        amounts[0] = amount0In;
-        amounts[1] = amount1In;
+        amounts[0] = amount0;
+        amounts[1] = amount1;
+        TransferHelper.safeTransferFrom(SavingsDaiMarket.sDAI, msg.sender, address(this), amounts[0]);
+        TransferHelper.safeTransferFrom(StEthMarket.stETH, msg.sender, address(this), amounts[1]);
+        uint256 _sharePrePrice = sharePrePrice();
         uint256 share = Formula.dot(amounts, prices, decimals) * _sharePrePrice;
         _mint(msg.sender, share);
         updateAssetAmounts();
-        emit DepositUnderlying(msg.sender, share, amount0In, amount1In);
+        emit DepositUnderlying(msg.sender, share, amounts[0], amounts[1]);
         return share;
     }
 
@@ -190,8 +188,8 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         _burn(msg.sender, share);
         address token0Out = underlyingTokens[0];
         address token1Out = underlyingTokens[1];
-        TransferHelper.safeTransferFrom(token0Out, address(this), msg.sender, amount0Out);
-        TransferHelper.safeTransferFrom(token1Out, address(this), msg.sender, amount1Out);
+        TransferHelper.safeTransfer(token0Out, msg.sender, amount0Out);
+        TransferHelper.safeTransfer(token1Out, msg.sender, amount1Out);
         updateAssetAmounts();
         emit WithdrawUnderlying(msg.sender, share, amount0Out, amount1Out);
     }
@@ -215,13 +213,13 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
             //查询合约中stETH的数量
             uint256 sETHAmount = StEthMarket.balanceOf(address(this));
             //计算这段时间内生息资产
-            uint256 sDaiInterestAmount = assetAmounts[SavingsDaiMarket.sDAI] - (sDaiAmount * exchangeRate);
-            uint256 sETHInterestAmount = assetAmounts[StEthMarket.stETH] - sETHAmount;
+            uint256 sDaiInterestAmount = (sDaiAmount * exchangeRate) - assetAmounts[SavingsDaiMarket.sDAI];
+            uint256 sETHInterestAmount = sETHAmount - assetAmounts[StEthMarket.stETH];
             //计算协议费用
             uint256 sDaiFeeAmount = sDaiInterestAmount * protocolFee / 100 / 1e18;
             uint256 sETHFeeAmount = sETHInterestAmount * protocolFee / 100;
-            TransferHelper.safeTransferFrom(SavingsDaiMarket.sDAI, address(this), PROTOCOL_FEE_RESERVE, sDaiFeeAmount);
-            TransferHelper.safeTransferFrom(StEthMarket.stETH, address(this), PROTOCOL_FEE_RESERVE, sETHFeeAmount);
+            TransferHelper.safeTransfer(SavingsDaiMarket.sDAI, PROTOCOL_FEE_RESERVE, sDaiFeeAmount);
+            TransferHelper.safeTransfer(StEthMarket.stETH, PROTOCOL_FEE_RESERVE, sETHFeeAmount);
             emit ProtocolFee(sDaiFeeAmount, sETHFeeAmount);
         }
     }

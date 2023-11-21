@@ -23,11 +23,11 @@ library StEthMarket {
 
     address constant stETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
 
-    function balanceOf(address _account) public view returns (uint256) {
+    function balanceOf(address _account) internal view returns (uint256) {
         return Lido(stETH).balanceOf(_account);     
     }    
 
-    function submit(address _referral, uint256 _value) public returns (uint256) {
+    function submit(address _referral, uint256 _value) internal returns (uint256) {
         bytes memory _data = abi.encodeWithSelector(Lido.submit.selector, _referral);
         (bool success, bytes memory data) = stETH.call{value: _value}(_data);
         require(success, "stEthMarket: submit failed");

@@ -3,20 +3,17 @@
 //
 // When running the script with `npx hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
+const fs = require("fs");
 const {ethers} = require("hardhat");
 
 async function deployVault(supportAssets, assetOracles, protocolFeeReserve, name, symbol) {
     const CindexSwap = await ethers.getContractFactory("CindexSwap");
     const cindexSwap = await CindexSwap.deploy();
     console.log("CindexSwap deployed to:", cindexSwap.target);
-    const Vault = await ethers.getContractFactory("Vault", {
-        libraries: {
-            "StEthMarket":"0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84"
-        },
-    });
+    const Vault = await ethers.getContractFactory("Vault");
     const vault = await Vault.deploy(supportAssets, assetOracles, protocolFeeReserve, cindexSwap.target, name, symbol);
     console.log("Vault deployed to:", vault.target);
-    return vault.target;
+  return vault.target;
 }
 
 async function main() {
