@@ -136,6 +136,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
 
     function depositUnderlying(uint256 amount0) external onlyEOA nonReentrant whenNotPaused returns (uint256){
         require(amount0 > 0, 'Amount0InZero');
+        uint256 _sharePrePrice = sharePrePrice();
         calProtocolFee();
         (uint256[] memory prices, uint8[] memory decimals) = getPrices();
         uint256 amount1 = amount0 * (prices[0] / (10 ** decimals[0])) * weights[1] / 100 / (prices[1] / (10 ** decimals[1]));
@@ -144,7 +145,6 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         amounts[1] = amount1;
         TransferHelper.safeTransferFrom(SavingsDaiMarket.sDAI, msg.sender, address(this), amounts[0]);
         TransferHelper.safeTransferFrom(StEthMarket.stETH, msg.sender, address(this), amounts[1]);
-        uint256 _sharePrePrice = sharePrePrice();
         uint256 share = Formula.dot(amounts, prices, decimals) * _sharePrePrice;
         _mint(msg.sender, share);
         updateAssetAmounts();
