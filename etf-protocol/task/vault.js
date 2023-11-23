@@ -36,7 +36,7 @@ const balance = async(user) => {
     console.log(`user: ${user} DAI balance: ${await daiToken.balanceOf(user)}`);
     console.log(`user: ${vault} sDAI balance: ${await sDaiToken.balanceOf(user)}`);
     console.log(`user: ${vault} stETH balance: ${await stEthToken.balanceOf(user)}`);
-
+    console.log(`CindexSwap: ${data.CindexSwap.address} stETH balance: ${await stEthToken.balanceOf(data.CindexSwap.address)}`);
     console.log(`vault: ${vault} sDAI balance: ${await sDaiToken.balanceOf(vault)}`);
     console.log(`vault: ${vault} stETH balance: ${await stEthToken.balanceOf(vault)}`);
     
@@ -70,6 +70,11 @@ const approve = async() => {
 
 const oneinchSwap = async(query) => {
     const url = 'https://api.1inch.dev/swap/v5.2/1/swap';
+    var protocol;
+    var token = query.src;
+    if (token.toLowerCase() == data.stETH.address.toLowerCase()){
+        protocol = "CURVE,SUSHI,CURVE_V2_SPELL_2_ASSET,CURVE_V2_SGT_2_ASSET,CURVE_V2_THRESHOLDNETWORK_2_ASSET,DODO_V2,SAKESWAP,CURVE_V2,CURVE_V2_EURS_2_ASSET,CURVE_3CRV,MOONISWAP,BALANCER,BALANCER_V2"
+    }
     const response = await axios.get(url, {
         headers: {
             "Authorization": "Bearer U9yP69d3obZnRC3ZPxcXlnDammgnu7Di" // Replace with your actual API key
@@ -80,14 +85,14 @@ const oneinchSwap = async(query) => {
             amount: query.amount,//100000000,
             from: query.from,//"0xF501D4C73aEe0D88b1cbb72412Fa53f32542459A",
             slippage: 2,
-            receiver: query.receiver == undefined ? data.Vault.address : query.receiver,
+            receiver: query.receiver,
             // allowPartialFill: true,
             disableEstimate: true,
             includeProtocols: true,
-            // protocols: "DEFISWAP,CURVE,UNISWAP_V3"
+            protocols: protocol
         }
     })
-    console.log("swap data:", response.data.protocols);
+    console.log("swap data:", response.data);
     const protocols = response.data?.protocols;
     if (protocols.length > 0) {
         protocols.map(p => console.log("protocol:", p));
@@ -106,7 +111,8 @@ const deposit = async(tokenIn, amountIn, referralCode) => {
             src: tokenIn,
             dst: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
             amount: amount0,
-            from: data.CindexSwap.address
+            from: data.CindexSwap.address,
+            receiver: data.Vault.address,
         });
         swapData.push([res0.tx.to, res0.tx.data, true]);
         await wait(1000);
@@ -115,6 +121,7 @@ const deposit = async(tokenIn, amountIn, referralCode) => {
             dst: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             amount: amount1,
             from: data.CindexSwap.address,
+            receiver: data.Vault.address,
         });
         swapData.push([res1.tx.to, res1.tx.data, true]);
         // console.log("swapData:", swapData);
@@ -127,18 +134,20 @@ const deposit = async(tokenIn, amountIn, referralCode) => {
             src: tokenIn,
             dst: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             amount: amount1,
-            from: data.CindexSwap.address
+            from: data.CindexSwap.address,
+            receiver: data.Vault.address,
         });
         swapData.push([res1.tx.to, res1.tx.data, true]);
         // console.log("swapData:", swapData);
         console.log(`swapData: ${swapData}`);
     }
-    await wait(2000);
-    // const res = await valutContract.getFunction('deposit').staticCall([tokenIn, amountIn, swapData, referralCode], {gas: 2000000, gasPrice: 10000000000});
-    // console.log(`res: ${res}`);
-    const receipt = await valutContract.deposit([tokenIn, amountIn, swapData, referralCode], {gas: 2000000, gasPrice: 10000000000});
+    await wait(1000);
+    const res = await valutContract.getFunction('deposit').staticCall([tokenIn, amountIn, swapData, referralCode], {gas: 2000000, gasPrice: 10000000000});
+    console.log(`res: ${res}`);
+    const receipt = await valutContract.deposit([tokenIn, amountIn, swapData, referralCode], {gas: 5000000, gasPrice: 300000000000});
     await receipt.wait();
     console.log(`Deposit tx: ${receipt.hash}`);
+    return receipt.hash;
 }
 
 const swapTosDAI = async(tokenIn, amount) => {
@@ -151,7 +160,8 @@ const swapTosDAI = async(tokenIn, amount) => {
         src: tokenIn,
         dst: data.DAI.address,
         amount: amount,
-        from: data.CindexSwap.address
+        from: data.CindexSwap.address,
+        receiver: data.Vault.address,
     });
     swapData.push([res1.tx.to, res1.tx.data, true]);
     // console.log("swapData:", swapData);
@@ -171,7 +181,8 @@ const swapTostETH = async(tokenIn, amount) => {
         src: tokenIn,
         dst: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
         amount: amount,
-        from: data.CindexSwap.address
+        from: data.CindexSwap.address,
+        receiver: data.Vault.address,
     });
     swapData.push([res1.tx.to, res1.tx.data, true]);
     swapData.push([res1.tx.to, res1.tx.data, true]);
@@ -179,26 +190,33 @@ const swapTostETH = async(tokenIn, amount) => {
     console.log(`swapData: ${swapData}`);
     const res = await valutContract.getFunction('_depositStEth').staticCall(tokenIn, amount, swapData, {gas: 2000000, gasPrice: 10000000000});
     console.log(`res: ${res}`);
-    // const receipt = await valutContract._depositStEth(tokenIn, amount, swapData, {gas: 2000000, gasPrice: 10000000000});
-    // await receipt.wait();
-    // console.log(`swapTosDAI tx: ${receipt.hash}`);
+    const receipt = await valutContract._depositStEth(tokenIn, amount, swapData, {gas: 2000000, gasPrice: 10000000000});
+    await receipt.wait();
+    console.log(`swapTosDAI tx: ${receipt.hash}`);
 }
 
-const swap = async(tokenIn, amount) => {
+const swap = async(tokenIn, tokenOut, amount, from, receiver) => {
     const token = new ethers.Contract(tokenIn, tokenABI, wallet);
-    const receipt2 = await token.transfer(data.CindexSwap.address, amount);
-    await receipt2.wait();
-    await wait(1000);
+    // const receipt2 = await token.transfer(data.CindexSwap.address, amount);
+    // await receipt2.wait();
+    // await wait(1000);
+    // const newAmount = await token.balanceOf(data.CindexSwap.address);
+    // console.log(`amount: ${amount} newAmount: ${newAmount}`);
+    const newAmount = amount;
     const res1 = await oneinchSwap({
         src: tokenIn,
-        dst: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-        amount: amount,
-        from: data.CindexSwap.address
+        dst: tokenOut,
+        amount: newAmount,
+        from: from,
+        receiver: receiver,
     });
     const swapContract = new ethers.Contract(data.CindexSwap.address, swapABI, wallet);
     console.log(res1.tx.to, res1.tx.data);
-    const res = await swapContract.getFunction('swap').staticCall(tokenIn, amount, [res1.tx.to, res1.tx.data, true], {gas: 2000000, gasPrice: 10000000000});
+    const res = await swapContract.getFunction('swap').staticCall(tokenIn, newAmount, [res1.tx.to, res1.tx.data, true], {gas: 2000000, gasPrice: 10000000000});
     console.log(`res: ${res}`);
+    // const receipt = await swapContract.swap(tokenIn, amount, [res1.tx.to, res1.tx.data, true], {gas: 2000000, gasPrice: 10000000000});
+    // await receipt.wait();
+    // console.log(`swapTosDAI tx: ${receipt.hash}`);
 }
 
 const wait = async(ms) => {
@@ -248,6 +266,7 @@ const withdraw = async(share, tokenOut) => {
             receiver: wallet.address
         });
         swapData.push([res0.tx.to, res0.tx.data, true]);
+        
         await wait(2000);
         //stETH转换成目标币tokenOut
         const res1 = await oneinchSwap({
@@ -267,23 +286,45 @@ const withdraw = async(share, tokenOut) => {
     console.log(`Withdraw tx: ${receipt.hash}`);
 
 }
+
+const write = async() => {
+    const stEthToken = new ethers.Contract(data.stETH.address, tokenABI, wallet);
+    const receipt = await stEthToken.approve("0x1111111254eeb25477b68fb85ed929f73a960582", "1000000000000000000000000");
+    await receipt.wait();
+    await wait(1000);
+    const transaction = {
+        from: "0x068312c3b5FfD0cA32A45A3ba163A59525895397",
+        to: "0x1111111254eeb25477b68fb85ed929f73a960582",
+        data: '0xbc80f1a80000000000000000000000003978d026fcaa577b80c74f95733ef53b61e009d60000000000000000000000000000000000000000000000000000e3de455a6612000000000000000000000000000000000000000000000000000000000007bada000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000018000000000000000000000006c83b0feef04139eb5520b1ce0e78069c6e7e2c58b1ccac8'
+        // data: data
+    }
+    var res = await provider.call(
+        transaction
+    );
+    console.log('res:', res)
+
+    // const res2 = inface.decodeFunctionResult('balanceOf', res)
+    // console.log(`res2: ${res2}`)
+}
+
 const Trans = async() => {
-    await balance(wallet.address);
-    // await balance(data.CindexSwap.address)
+    // await balance(wallet.address);
+    await balance("0x068312c3b5FfD0cA32A45A3ba163A59525895397")
     // await prices();
     // await approve();
     const totalSupply = await valutContract.totalSupply();
-    console.log(`totalSupply: ${totalSupply} sharePrePrice: ${await valutContract.sharePrePrice()}`)
-    // await swapTosDAI(data.USDC.address, 10000000);
-    // await swapTostETH(data.USDC.address, 10000000);
-    // await swap(data.USDT.address, 10000000);
+    console.log(`totalSupply: ${totalSupply} sharePrePrice: ${await valutContract.sharePrePrice()} poolAmounts: ${await valutContract.getPoolAmounts()}`)
+    // await swapTosDAI(data.USDT.address, 10000000);
+    // await swapTostETH(data.USDT.address, 10000000);
+    // await swap(data.stETH.address, data.DAI.address, "287323375483911", data.CindexSwap.address, wallet.address);
     // await oneinchSwap();
-    // await deposit(data.USDT.address, 10000000, 'code');
-    // await deposit(data.DAI.address, "10000000000000000000", 'code');
+    // await deposit(data.USDT.address, 1000000000, 'code');
+    // await deposit(data.DAI.address, "1000000000000000000000", 'cindex');
     // await userBalance(wallet.address);
-    await withdraw("9935066353364787954", data.DAI.address);
+    // await withdraw("863112394529725176565", data.USDT.address);
     // await balance(wallet.address);
-    // console.log(await provider.getTransactionReceipt('0x101fb5710ec2cd240a30094216b895f46cc878aa866ce5ae569b22e2fe3bd630'));
+    // await write();
+    // console.log(await provider.getLogs({blockHash:"0x59b9572740070ab678ea800b7bc828031ad50ba1be462733e8988ba262e152dd"}));
 }
 Trans().then(() => process.exit(0)).catch((error) => {
     console.error(error);

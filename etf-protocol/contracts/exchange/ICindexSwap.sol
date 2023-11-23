@@ -2,7 +2,7 @@
 pragma solidity ^0.8.9;
 
 interface ICindexSwap {
-
+    
     struct SwapData {
         address extRouter;
         bytes extCalldata;

@@ -17,6 +17,7 @@ interface Lido {
      */
     function balanceOf(address) external view returns (uint256);
 
+    function getPooledEthByShares(uint256) external view returns (uint256);
 }
 
 library StEthMarket {
@@ -28,6 +29,7 @@ library StEthMarket {
     }    
 
     function submit(address _referral, uint256 _value) internal returns (uint256) {
-        return Lido(stETH).submit{ value: _value }(_referral);
+        uint256 shareAmount = Lido(stETH).submit{ value: _value }(_referral);
+        return Lido(stETH).getPooledEthByShares(shareAmount);
     }
 }

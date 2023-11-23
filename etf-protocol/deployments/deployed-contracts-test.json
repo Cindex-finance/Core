@@ -19,10 +19,10 @@
         "address": "0x83F20F44975D03b1b09e64809B757c47f942BEeA",
         "oracle": "0x0487C6F6a1Dd69AcACdcAE5Ae1AfFFB37a711dAA"
     },
-    "Vault": {
-        "address": "0x10fd6F3bB533A3D4C7310F09a4721F1C952b8424"
-    },
     "CindexSwap": {
-        "address": "0x472629aE3453a11AD2be4d1E18E4CbE27F1AAE2f"
+        "address": "0xFc04B3dba886c8469a1863DA36e42aF1dC57F519"
+    },
+    "Vault": {
+        "address": "0x9f7caf2c9FC41c11eB018ac9F32d30ad9D0eb02B"
     }
 }
