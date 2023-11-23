@@ -28,9 +28,6 @@ library StEthMarket {
     }    
 
     function submit(address _referral, uint256 _value) internal returns (uint256) {
-        bytes memory _data = abi.encodeWithSelector(Lido.submit.selector, _referral);
-        (bool success, bytes memory data) = stETH.call{value: _value}(_data);
-        require(success, "stEthMarket: submit failed");
-        return abi.decode(data, (uint256));
+        return Lido(stETH).submit{ value: _value }(_referral);
     }
 }
