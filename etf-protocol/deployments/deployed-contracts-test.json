@@ -1,0 +1,28 @@
+{
+    "USDC": {
+        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "oracle": "0x986b5e1e1755e3c2440e960477f25201b0a8bbd4"
+    },
+    "USDT": {
+        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+        "oracle": "0xee9f2375b4bdf6387aa8265dd4fb8f16512a1d46"
+    },
+    "DAI": {
+        "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+        "oracle": "0xaed0c38402a5d19df6e4c03f4e2dced6e29c1ee9"
+    },
+    "stETH": {
+        "address": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
+        "oracle": "0xcfe54b5cd566ab89272946f602d76ea879cab4a8"
+    },
+    "sDAI": {
+        "address": "0x83F20F44975D03b1b09e64809B757c47f942BEeA",
+        "oracle": "0x0487C6F6a1Dd69AcACdcAE5Ae1AfFFB37a711dAA"
+    },
+    "Vault": {
+        "address": "0x10fd6F3bB533A3D4C7310F09a4721F1C952b8424"
+    },
+    "CindexSwap": {
+        "address": "0x472629aE3453a11AD2be4d1E18E4CbE27F1AAE2f"
+    }
+}

@@ -118,16 +118,8 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         uint256 amount0 = amountIn * weights[0] / 100;
         uint256 amount1 = amountIn * weights[1] / 100;
         (uint256[] memory prices, uint8[] memory decimals) = getPrices();
-        if (totalSupply() > 0){
-            uint256 value = queryAssetValue(tokenIn, amountIn);
-            //需要平衡两个币数量，公式需要修改
-            uint256[] memory amounts = Formula.calDecrease(getPoolAmounts(), weights, prices, decimals, 
-                value);
-            amount0 = amounts[0];
-            amount1 = amounts[1];
-        }
-        uint256[] memory newAmounts = _deposit(tokenIn, amountIn, swapData);
-        uint256 share = Formula.dot(newAmounts, prices, decimals) * _sharePrePrice;
+        uint256[] memory newAmounts = _deposit(tokenIn, amount0, amount1, swapData);
+        uint256 share = Formula.dot(newAmounts, prices, decimals) * _sharePrePrice / PRECISION;
         _mint(msg.sender, share);
         updateAssetAmounts();
         emit Deposit(msg.sender, share, tokenIn, amountIn, amount0, amount1, referralCode);
@@ -147,7 +139,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = amount0In;
         amounts[1] = amount1In;
-        uint256 share = Formula.dot(amounts, prices, decimals) * _sharePrePrice;
+        uint256 share = Formula.dot(amounts, prices, decimals) * _sharePrePrice / PRECISION;
         _mint(msg.sender, share);
         updateAssetAmounts();
         emit DepositUnderlying(msg.sender, share, amount0In, amount1In);
@@ -165,17 +157,25 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         ICindexSwap.SwapData[] memory swapData = params.swapData;
         require(swapData.length > 0, 'SwapDataZero');
         uint256 totalSupply = totalSupply();
+        calProtocolFee();
         //需提出来的币数量
         uint256[] memory amounts = getPoolAmounts();
         uint256 amount0 = amounts[0] * share / totalSupply;//sDAI
         uint256 amount1 = amounts[1] * share / totalSupply;//stETH
-        calProtocolFee();
         _burn(msg.sender, share);
         //先将sDAI换成DAI，然后swap换成目标币
-        uint256 amount = SavingsDaiMarket.redeem(amount0, address(this), address(this));
-        router.swap(DAI, amount, swapData[0]);
+        ICindexSwap.SwapData memory stEthSwapData;
+        if (tokenOut == DAI) {
+            SavingsDaiMarket.redeem(amount0, msg.sender, address(this));
+            stEthSwapData = swapData[0];
+        } else {
+            uint256 amount = SavingsDaiMarket.redeem(amount0, address(router), address(this));
+            router.swap(DAI, amount, swapData[0]);
+            stEthSwapData = swapData[1];
+        }
         //再将stETH直接swap到目标币
-        router.swap(STETH, amount1, swapData[1]);
+        TransferHelper.safeTransfer(STETH, address(router), amount1);
+        router.swap(STETH, amount1, stEthSwapData);
         updateAssetAmounts();
         emit Withdraw(msg.sender, share, tokenOut, share, amount0, amount1);
     }
@@ -215,21 +215,25 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
             //查询合约中stETH的数量
             uint256 sETHAmount = StEthMarket.balanceOf(address(this));
             //计算这段时间内生息资产
-            uint256 sDaiInterestAmount = assetAmounts[SavingsDaiMarket.sDAI] - (sDaiAmount * exchangeRate);
+            uint256 sDaiInterestAmount = sDaiAmount * exchangeRate - assetAmounts[SavingsDaiMarket.sDAI];
             uint256 sETHInterestAmount = assetAmounts[StEthMarket.stETH] - sETHAmount;
             //计算协议费用
             uint256 sDaiFeeAmount = sDaiInterestAmount * protocolFee / 100 / 1e18;
             uint256 sETHFeeAmount = sETHInterestAmount * protocolFee / 100;
-            TransferHelper.safeTransferFrom(SavingsDaiMarket.sDAI, address(this), PROTOCOL_FEE_RESERVE, sDaiFeeAmount);
-            TransferHelper.safeTransferFrom(StEthMarket.stETH, address(this), PROTOCOL_FEE_RESERVE, sETHFeeAmount);
+            if (sDaiFeeAmount > 0) {
+                TransferHelper.safeTransfer(SavingsDaiMarket.sDAI, PROTOCOL_FEE_RESERVE, sDaiFeeAmount);
+            }
+            if (sETHFeeAmount > 0) {
+                TransferHelper.safeTransfer(StEthMarket.stETH, PROTOCOL_FEE_RESERVE, sETHFeeAmount);
+            }
             emit ProtocolFee(sDaiFeeAmount, sETHFeeAmount);
         }
     }
     
-    function _deposit(address tokenIn, uint256 amountIn, ICindexSwap.SwapData[] memory swapData) internal returns(uint256[] memory) {
+    function _deposit(address tokenIn, uint256 amount0, uint256 amount1, ICindexSwap.SwapData[] memory swapData) internal returns(uint256[] memory) {
         uint256[] memory amounts = new uint256[](2);
-        uint256 sDaiAmount = _depositSavingDai(tokenIn, amountIn, swapData);
-        uint256 stEthAmount = _depositStEth(tokenIn, amountIn, swapData);
+        uint256 sDaiAmount = _depositSavingDai(tokenIn, amount0, swapData);
+        uint256 stEthAmount = _depositStEth(tokenIn, amount1, swapData);
         amounts[0] = sDaiAmount;
         amounts[1] = stEthAmount;
         return amounts;
@@ -242,7 +246,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         uint256[] memory poolAmounts = getPoolAmounts();
         (uint256[] memory prices, uint8[] memory decimals) = getPrices();
         uint256 value = Formula.dot(poolAmounts, prices, decimals);
-        return totalSupply() > 0 ? totalSupply() * PRECISION / value : 1;
+        return totalSupply() > 0 ? totalSupply() * PRECISION / value : PRECISION;
     }
 
     /*
@@ -266,7 +270,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         } else {
             uint256 beforeAmount = IERC20(DAI).balanceOf(address(this));
             // 非DAI,需进行两次swap，将部分tokenIn换为DAI，存入sDAI,再将另一部分tokenIn,换成ETH，存入stETH,意味着需要进行两次swap操作
-            TransferHelper.safeTransferFrom(token, address(this), address(router), amount);
+            TransferHelper.safeTransfer(token, address(router), amount);
             ICindexSwap.SwapData memory _swapdata = swapdata[0];
             router.swap(token, amount, _swapdata);
             uint256 afterAmount = IERC20(DAI).balanceOf(address(this));
@@ -276,15 +280,20 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
     }
 
     function _depositStEth(address token, uint256 amount, ICindexSwap.SwapData[] memory swapdata) internal returns (uint256) {
-        if (amount > 0) {
+        if (amount == 0) {
             return 0;
         }
         uint256 beforeAmount = address(this).balance;
-        TransferHelper.safeTransferFrom(token, address(this), address(router), amount);
-        ICindexSwap.SwapData memory _swapdata = swapdata[1];
+        TransferHelper.safeTransfer(token, address(router), amount);
+        ICindexSwap.SwapData memory _swapdata;
+        if (token == DAI) {
+            _swapdata = swapdata[0];
+        } else {
+            _swapdata = swapdata[1];
+        }
         router.swap(token, amount, _swapdata);
         uint256 afterAmount = address(this).balance;
-        return StEthMarket.submit(address(this), afterAmount - beforeAmount);
+        return StEthMarket.submit(address(0), afterAmount - beforeAmount);
     }
 
     function queryAssetValue(address asset, uint256 amount) internal view returns (uint256) {
@@ -323,5 +332,13 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
 
     function unpause() external onlyOwner whenPaused {
         _unpause();
+    }
+
+    receive() external payable {
+
+    }
+
+    fallback() external payable{
+
     }
 }

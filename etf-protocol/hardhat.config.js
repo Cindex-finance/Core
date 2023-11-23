@@ -32,6 +32,10 @@ module.exports = {
     bscTest: {
       url: 'https://bsc-testnet.public.blastapi.io',
       accounts: mnemonic()
+    },
+    test: {
+      url: 'http://10.9.1.248:7545',
+      accounts: mnemonic()
     }
   },
   etherscan: {
