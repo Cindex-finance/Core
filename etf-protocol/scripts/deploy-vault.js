@@ -3,6 +3,7 @@
 //
 // When running the script with `npx hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
+const fs = require("fs");
 const {ethers} = require("hardhat");
 
 async function deployVault(supportAssets, assetOracles, protocolFeeReserve, name, symbol) {
@@ -12,7 +13,7 @@ async function deployVault(supportAssets, assetOracles, protocolFeeReserve, name
     const Vault = await ethers.getContractFactory("Vault");
     const vault = await Vault.deploy(supportAssets, assetOracles, protocolFeeReserve, cindexSwap.target, name, symbol);
     console.log("Vault deployed to:", vault.target);
-    return vault.target;
+  return vault.target;
 }
 
 async function main() {
