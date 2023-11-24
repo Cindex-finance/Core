@@ -120,7 +120,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         uint256 share = Formula.dot(newAmounts, prices, decimals) * _sharePrePrice / PRECISION;
         _mint(msg.sender, share);
         updateAssetAmounts();
-        emit Deposit(msg.sender, share, tokenIn, amountIn, amount0, amount1, referralCode);
+        emit Deposit(msg.sender, share, tokenIn, amountIn, newAmounts[0], newAmounts[1], referralCode);
         return share;
     }
 
