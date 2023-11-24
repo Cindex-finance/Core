@@ -19,8 +19,6 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         address oracle;
     }
 
-    uint256 public lastUpdatedTime;
-
     uint256 public protocolFee = 20;
 
     // Support staking coins (usdc,usdt,dai)
@@ -180,11 +178,11 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
 
     function withdrawUnderlying(uint256 share) external onlyEOA nonReentrant whenNotPaused {
         require(share > 0, 'ShareZero');
+        calProtocolFee();
         uint256 totalSupply = totalSupply();
         uint256[] memory amounts = getPoolAmounts();
         uint256 amount0Out = amounts[0] * share / totalSupply;
         uint256 amount1Out = amounts[1] * share / totalSupply;
-        calProtocolFee();
         _burn(msg.sender, share);
         address token0Out = underlyingTokens[0];
         address token1Out = underlyingTokens[1];
@@ -218,8 +216,12 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
             //计算协议费用
             uint256 sDaiFeeAmount = sDaiInterestAmount * protocolFee / 100 / 1e18;
             uint256 sETHFeeAmount = sETHInterestAmount * protocolFee / 100;
-            TransferHelper.safeTransfer(SavingsDaiMarket.sDAI, PROTOCOL_FEE_RESERVE, sDaiFeeAmount);
-            TransferHelper.safeTransfer(STETH, PROTOCOL_FEE_RESERVE, sETHFeeAmount);
+            if (sDaiFeeAmount > 0) {
+                TransferHelper.safeTransfer(SavingsDaiMarket.sDAI, PROTOCOL_FEE_RESERVE, sDaiFeeAmount);
+            }
+            if (sETHFeeAmount > 0) {
+                TransferHelper.safeTransfer(STETH, PROTOCOL_FEE_RESERVE, sETHFeeAmount);
+            }
             emit ProtocolFee(sDaiFeeAmount, sETHFeeAmount);
         }
     }

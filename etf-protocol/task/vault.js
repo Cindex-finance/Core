@@ -84,7 +84,7 @@ const oneinchSwap = async(query) => {
             dst: query.dst,//"0x6B175474E89094C44Da98b954EedeAC495271d0F",
             amount: query.amount,//100000000,
             from: query.from,//"0xF501D4C73aEe0D88b1cbb72412Fa53f32542459A",
-            slippage: 2,
+            slippage: 1,
             receiver: query.receiver,
             // allowPartialFill: true,
             disableEstimate: true,
@@ -308,9 +308,9 @@ const write = async() => {
 }
 
 const Trans = async() => {
-    // await balance(wallet.address);
-    await balance("0x068312c3b5FfD0cA32A45A3ba163A59525895397")
-    // await prices();
+    await balance(wallet.address);
+    // await balance("0x068312c3b5FfD0cA32A45A3ba163A59525895397")
+    await prices();
     // await approve();
     const totalSupply = await valutContract.totalSupply();
     console.log(`totalSupply: ${totalSupply} sharePrePrice: ${await valutContract.sharePrePrice()} poolAmounts: ${await valutContract.getPoolAmounts()}`)
@@ -321,10 +321,12 @@ const Trans = async() => {
     // await deposit(data.USDT.address, 1000000000, 'code');
     // await deposit(data.DAI.address, "1000000000000000000000", 'cindex');
     // await userBalance(wallet.address);
-    // await withdraw("863112394529725176565", data.USDT.address);
+    // await withdraw("99898657260306667156", data.DAI.address);
     // await balance(wallet.address);
     // await write();
-    // console.log(await provider.getLogs({blockHash:"0x59b9572740070ab678ea800b7bc828031ad50ba1be462733e8988ba262e152dd"}));
+    //0xbc1ebded6c14c80c226bdb2f03b6405e1744dbc3342a79ad85ed5d8eb544a9f9
+    // console.log(await provider.getTransactionReceipt('0x3d96e9b308ba0f8f70ee118034431f127f84e023b0aece177442498f090a5523'));
+    // console.log(await provider.getLogs({blockHash:"0x1fd579f9a38fd64860c8dcfd9b3c9da84d81917565f0f76f01a2d7305018ca06"}));
 }
 Trans().then(() => process.exit(0)).catch((error) => {
     console.error(error);
