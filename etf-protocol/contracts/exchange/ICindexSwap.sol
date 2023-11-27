@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.9;
 
 interface ICindexSwap {
-    
+
     struct SwapData {
         address extRouter;
         bytes extCalldata;

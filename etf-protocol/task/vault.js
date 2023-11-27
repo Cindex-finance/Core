@@ -84,7 +84,7 @@ const oneinchSwap = async(query) => {
             dst: query.dst,//"0x6B175474E89094C44Da98b954EedeAC495271d0F",
             amount: query.amount,//100000000,
             from: query.from,//"0xF501D4C73aEe0D88b1cbb72412Fa53f32542459A",
-            slippage: 1,
+            slippage: 5,
             receiver: query.receiver,
             // allowPartialFill: true,
             disableEstimate: true,
@@ -144,7 +144,7 @@ const deposit = async(tokenIn, amountIn, referralCode) => {
     await wait(1000);
     const res = await valutContract.getFunction('deposit').staticCall([tokenIn, amountIn, swapData, referralCode], {gas: 2000000, gasPrice: 10000000000});
     console.log(`res: ${res}`);
-    const receipt = await valutContract.deposit([tokenIn, amountIn, swapData, referralCode], {gas: 5000000, gasPrice: 300000000000});
+    const receipt = await valutContract.deposit([tokenIn, amountIn, swapData, referralCode], {gas: 1000000000, gasPrice: 5000000000000});
     await receipt.wait();
     console.log(`Deposit tx: ${receipt.hash}`);
     return receipt.hash;
@@ -318,14 +318,14 @@ const Trans = async() => {
     // await swapTostETH(data.USDT.address, 10000000);
     // await swap(data.stETH.address, data.DAI.address, "287323375483911", data.CindexSwap.address, wallet.address);
     // await oneinchSwap();
-    // await deposit(data.USDT.address, 1000000000, 'code');
-    // await deposit(data.DAI.address, "1000000000000000000000", 'cindex');
+    // await deposit(data.USDT.address, 1180000000, 'code');
+    // await deposit(data.DAI.address, "100000000000000000000", 'cindex');
     // await userBalance(wallet.address);
-    // await withdraw("99898657260306667156", data.DAI.address);
+    // await withdraw("177852034201450104403", data.USDC.address);
     // await balance(wallet.address);
     // await write();
     //0xbc1ebded6c14c80c226bdb2f03b6405e1744dbc3342a79ad85ed5d8eb544a9f9
-    // console.log(await provider.getTransactionReceipt('0x3d96e9b308ba0f8f70ee118034431f127f84e023b0aece177442498f090a5523'));
+    // console.log(await provider.getTransactionReceipt('0xceb4eb463363384d28a85343f28cd9c9c5707dba06a59420cad8e91e8fee031a'));
     // console.log(await provider.getLogs({blockHash:"0x1fd579f9a38fd64860c8dcfd9b3c9da84d81917565f0f76f01a2d7305018ca06"}));
 }
 Trans().then(() => process.exit(0)).catch((error) => {
