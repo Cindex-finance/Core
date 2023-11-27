@@ -35,6 +35,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
 
     address private immutable PROTOCOL_FEE_RESERVE;
 
+    // cindex swap router
     ICindexSwap public router;
 
     address constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -102,6 +103,9 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         return false;
     }
 
+    /*
+     *@dev deposit assets
+     */
     function deposit(DepositParams memory params) external onlyEOA nonReentrant whenNotPaused returns (uint256){
         address tokenIn = params.tokenIn;
         uint256 amountIn = params.amountIn;
@@ -124,6 +128,9 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         return share;
     }
 
+    /*
+    *@dev deposit sDai and mint token
+    */
     function depositUnderlying(uint256 amount0) external onlyEOA nonReentrant whenNotPaused returns (uint256){
         require(amount0 > 0, 'Amount0InZero');
         uint256 _sharePrePrice = sharePrePrice();
@@ -176,6 +183,9 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         emit Withdraw(msg.sender, share, tokenOut, share, amount0, amount1);
     }
 
+    /*
+    *@dev withdraw share get underlying assets
+    */
     function withdrawUnderlying(uint256 share) external onlyEOA nonReentrant whenNotPaused {
         require(share > 0, 'ShareZero');
         calProtocolFee();
@@ -205,15 +215,15 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
      */
     function calProtocolFee() internal {
         if (totalSupply() > 0) {
-            //查询
+            //sDAI amount
             uint256 sDaiAmount = SavingsDaiMarket.balanceOf(address(this));
             uint256 exchangeRate = SavingsDaiMarket.exchangeRate();
-            //查询合约中stETH的数量
+            //stETH amount
             uint256 sETHAmount = StEthMarket.balanceOf(address(this));
-            //计算这段时间内生息资产
+            //Interest-earning assets during this period
             uint256 sDaiInterestAmount = (sDaiAmount * exchangeRate) - assetAmounts[SavingsDaiMarket.sDAI];
             uint256 sETHInterestAmount = sETHAmount - assetAmounts[StEthMarket.stETH];
-            //计算协议费用
+            //Calculate protocol fees
             uint256 sDaiFeeAmount = sDaiInterestAmount * protocolFee / 100 / 1e18;
             uint256 sETHFeeAmount = sETHInterestAmount * protocolFee / 100;
             if (sDaiFeeAmount > 0) {
