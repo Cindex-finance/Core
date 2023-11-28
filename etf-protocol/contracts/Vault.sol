@@ -68,23 +68,17 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
     }
 
     constructor(
-        address[] memory _supportAssets,
-        AssetOracle[] memory _assetOracles,
-        address _protocolFeeReserve,
-        address _router,
-        string memory _symbol, 
-        string memory _name
+        address _router
     ) payable
-        ERC20(_name, _symbol)
+        ERC20("US Treasury Bond + STETH", "TBE")
     {
-        supportAssets = _supportAssets;
-        PROTOCOL_FEE_RESERVE = _protocolFeeReserve;
+        supportAssets = [address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48),address(0xdAC17F958D2ee523a2206206994597C13D831ec7),address(0x6B175474E89094C44Da98b954EedeAC495271d0F)];
+        PROTOCOL_FEE_RESERVE = address(0x7c4FC00b404775E9Bf3996b1ad0c2b72799e994d);
         router = ICindexSwap(_router);
-        uint256 count = _assetOracles.length;
-        for(uint256 i = 0; i < count; i++) {
-            AssetOracle memory assetOracle = _assetOracles[i];
-            oracles[assetOracle.asset] = AggregatorV3Interface(assetOracle.oracle);
-        }
+        oracles[address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48)] = AggregatorV3Interface(address(0x986b5E1e1755e3C2440e960477f25201B0a8bbD4));
+        oracles[address(0xdAC17F958D2ee523a2206206994597C13D831ec7)] = AggregatorV3Interface(address(0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46));
+        oracles[address(0x6B175474E89094C44Da98b954EedeAC495271d0F)] = AggregatorV3Interface(address(0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9));
+        oracles[address(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84)] = AggregatorV3Interface(address(0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8));
     }
 
 
