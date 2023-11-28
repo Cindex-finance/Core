@@ -68,7 +68,6 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
     }
 
     constructor(
-        address _router
     ) payable
         ERC20("US Treasury Bond + STETH", "TBE")
     {
