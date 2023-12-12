@@ -12,6 +12,7 @@ async function deployVault(supportAssets, assetOracles, protocolFeeReserve, name
     console.log("CindexSwap deployed to:", cindexSwap.target);
     const Vault = await ethers.getContractFactory("Vault");
     const vault = await Vault.deploy(supportAssets, assetOracles, protocolFeeReserve, cindexSwap.target, name, symbol);
+    // const vault = await Vault.deploy();
     console.log("Vault deployed to:", vault.target);
   return vault.target;
 }

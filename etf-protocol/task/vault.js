@@ -11,9 +11,10 @@ const etherseumData = require('../deployments/deployed-contracts-ethereum.json')
 require('dotenv').config();
 const privateKey = process.env.PRIVATE_KEY;
 const apiKey = process.env.ALCHEMY_API_KEY;
-const provider = new ethers.JsonRpcProvider(`http://10.9.1.248:7545`);
+const url = 'https://mainnet.infura.io/v3/e35956bc5ffe4afc9477a6d139a76363';
+const provider = new ethers.JsonRpcProvider(url);
 const wallet = new ethers.Wallet(privateKey, provider);
-const provider2 = new ethers.JsonRpcProvider('http://10.9.1.248:7545');
+const provider2 = new ethers.JsonRpcProvider(url);
 
 const vault = data.Vault.address;
 const valutContract = new ethers.Contract(vault, valutABI, wallet);
@@ -84,7 +85,7 @@ const oneinchSwap = async(query) => {
             dst: query.dst,//"0x6B175474E89094C44Da98b954EedeAC495271d0F",
             amount: query.amount,//100000000,
             from: query.from,//"0xF501D4C73aEe0D88b1cbb72412Fa53f32542459A",
-            slippage: 5,
+            slippage: 10,
             receiver: query.receiver,
             // allowPartialFill: true,
             disableEstimate: true,
@@ -313,12 +314,12 @@ const Trans = async() => {
     await prices();
     // await approve();
     const totalSupply = await valutContract.totalSupply();
-    console.log(`totalSupply: ${totalSupply} sharePrePrice: ${await valutContract.sharePrePrice()} poolAmounts: ${await valutContract.getPoolAmounts()}`)
+    console.log(`totalSupply: ${totalSupply} sharePrePrice: ${await valutContract.sharePrePrice({gasLimit: 18676359})} poolAmounts: ${await valutContract.getPoolAmounts()}`)
     // await swapTosDAI(data.USDT.address, 10000000);
     // await swapTostETH(data.USDT.address, 10000000);
     // await swap(data.stETH.address, data.DAI.address, "287323375483911", data.CindexSwap.address, wallet.address);
     // await oneinchSwap();
-    // await deposit(data.USDT.address, 1180000000, 'code');
+    // await deposit(data.USDT.address, 118000000, 'code');
     // await deposit(data.DAI.address, "100000000000000000000", 'cindex');
     // await userBalance(wallet.address);
     // await withdraw("177852034201450104403", data.USDC.address);
