@@ -7,6 +7,10 @@ function mnemonic() {
   return [process.env.PRIVATE_KEY];
 }
 
+function test_mnemonic() {
+  return [process.env.TESTNET_DEPLOYER_PRIVATE_KEY];
+}
+
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -36,6 +40,14 @@ module.exports = {
     test: {
       url: 'http://10.9.1.248:7545',
       accounts: mnemonic()
+    },
+    mumbai: {
+      url: 'https://polygon-testnet.public.blastapi.io',
+      accounts: test_mnemonic()
+    },
+    eth_goerli: {
+      url: `https://eth-goerli.alchemyapi.io/v2/${process.env.ALCHEMY_API_KEY}`,
+      accounts: test_mnemonic()
     }
   },
   etherscan: {
