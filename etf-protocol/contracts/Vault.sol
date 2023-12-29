@@ -37,11 +37,12 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
 
     // cindex swap router
     ICindexSwap public router;
-
+    // Maker: Dai Stablecoin
     address constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    // Lido: stETH Token
     address constant STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
 
-    // sDAI, stETH
+    // MakerDAO: sDAI Token, Lido: stETH Token
     address[] public underlyingTokens = [0x83F20F44975D03b1b09e64809B757c47f942BEeA, 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84];
 
     event Deposit(address indexed user, uint256 share, address asset, uint256 amount, uint256 amount0, uint256 amount1, string referralCode);
@@ -86,7 +87,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         _;
     }
 
-    function isSupportAsset(address asset) public view returns (bool) {
+    function isSupportAsset(address asset) internal view returns (bool) {
         uint256 count = supportAssets.length;
         for(uint256 i = 0; i < count; i++) {
             if (supportAssets[i] == asset) {
@@ -94,6 +95,10 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
             }
         }
         return false;
+    }
+
+    function updateRouter(address _router) external onlyOwner {
+        router = ICindexSwap(_router);
     }
 
     /*
@@ -129,6 +134,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         uint256 _sharePrePrice = sharePrePrice();
         calProtocolFee();
         (uint256[] memory prices, uint8[] memory decimals) = getPrices();
+        require(weights[0] > 0 && weights[1] > 0, 'WeightZero');
         uint256 amount1 = amount0 * (prices[0] / (10 ** decimals[0])) * weights[1] / weights[0] / (prices[1] / (10 ** decimals[1]));
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = amount0;
@@ -213,17 +219,19 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
             uint256 exchangeRate = SavingsDaiMarket.exchangeRate();
             //stETH amount
             uint256 sETHAmount = StEthMarket.balanceOf(address(this));
+            uint256 amount0 = assetAmounts[SavingsDaiMarket.sDAI];
+            uint256 amount1 = assetAmounts[StEthMarket.stETH];
             //Interest-earning assets during this period
-            uint256 sDaiInterestAmount = (sDaiAmount * exchangeRate) - assetAmounts[SavingsDaiMarket.sDAI];
-            uint256 sETHInterestAmount = sETHAmount - assetAmounts[StEthMarket.stETH];
-            //Calculate protocol fees
-            uint256 sDaiFeeAmount = sDaiInterestAmount * protocolFee / 100 / 1e18;
-            uint256 sETHFeeAmount = sETHInterestAmount * protocolFee / 100;
-            if (sDaiFeeAmount > 0) {
+            uint256 sDaiFeeAmount = 0;
+            uint256 sETHFeeAmount = 0;
+            if (sDaiAmount * exchangeRate > amount0) {
+                sDaiFeeAmount = (sDaiAmount * exchangeRate - amount0) * protocolFee / 100 / 1e18;
                 TransferHelper.safeTransfer(SavingsDaiMarket.sDAI, PROTOCOL_FEE_RESERVE, sDaiFeeAmount);
             }
-            if (sETHFeeAmount > 0) {
+            if (sETHAmount > amount1) {
+                sETHFeeAmount = (sETHAmount - amount1) * protocolFee / 100;
                 TransferHelper.safeTransfer(STETH, PROTOCOL_FEE_RESERVE, sETHFeeAmount);
+
             }
             emit ProtocolFee(sDaiFeeAmount, sETHFeeAmount);
         }
@@ -245,7 +253,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         uint256[] memory poolAmounts = getPoolAmounts();
         (uint256[] memory prices, uint8[] memory decimals) = getPrices();
         uint256 value = Formula.dot(poolAmounts, prices, decimals);
-        return totalSupply() > 0 ? totalSupply() * PRECISION / value : PRECISION;
+        return totalSupply() > 0 && value > 0 ? totalSupply() * PRECISION / value : PRECISION;
     }
 
     /*
@@ -294,42 +302,32 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
         return StEthMarket.submit(address(0), afterAmount - beforeAmount);
     }
 
-    function queryAssetValue(address asset, uint256 amount) internal view returns (uint256) {
-        AggregatorV3Interface feed = oracles[asset];
-        (,int256 price,,,) = feed.latestRoundData();
-        uint8 decimals = feed.decimals();
-        return uint256(price) * amount / (10 ** decimals);
-    }
-
     function getPrices() public view returns (uint256[] memory, uint8[] memory) {
         uint256[] memory prices = new uint256[](2);
         uint8[] memory decimals = new uint8[](2);
         // query dai oracle price
-        AggregatorV3Interface feed1 = oracles[DAI];
-        (,int256 price,,,) = feed1.latestRoundData();
+        (uint256 price0, uint8 decimals0) = _getPrice(oracles[DAI]);
         // query dai converter sDai exchange rate
         uint256 exchangeRate = SavingsDaiMarket.exchangeRate();
-        prices[0] = uint256(price) * exchangeRate / PRECISION;
-        decimals[0] = feed1.decimals();
-        
-        AggregatorV3Interface feed2 = oracles[STETH];
-        (,int256 price2,,,) = feed2.latestRoundData();
-        prices[1] = uint256(price2);
-        decimals[1] = feed2.decimals();
+        prices[0] = price0 * exchangeRate / PRECISION;
+        decimals[0] = decimals0;
+        (uint256 price1, uint8 decimals1) = _getPrice(oracles[STETH]);
+        prices[1] = price1;
+        decimals[1] = decimals1;
 
         return (prices, decimals);
     }
 
-    function getProtocolFeeReserve() public view returns (address) {
-        return PROTOCOL_FEE_RESERVE;
-    }
-    
-    function pause() external onlyOwner whenNotPaused {
-        _pause();
+    function _getPrice(AggregatorV3Interface feed) internal view returns (uint256, uint8) {
+        (uint80 roundId,int256 price,,,uint80 answeredInRound) = feed.latestRoundData();
+        require(price > 0, "Chainlink price <= 0");
+        require(answeredInRound >= roundId, "Stale price");
+        uint8 decimals = feed.decimals();
+        return (uint256(price), decimals);
     }
 
-    function unpause() external onlyOwner whenPaused {
-        _unpause();
+    function getProtocolFeeReserve() public view returns (address) {
+        return PROTOCOL_FEE_RESERVE;
     }
 
     receive() external payable {

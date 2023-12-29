@@ -17,7 +17,7 @@ contract CindexSwap is ICindexSwap, OneInchRouterHelper {
     ) external override payable {
         TransferHelper.safeApproveInf(tokenIn, data.extRouter);
         data.extRouter.functionCallWithValue(
-            data.needScale ? _getOneInchInputData(data.extCalldata, amountIn) : data.extCalldata,
+            _getOneInchInputData(data.extCalldata, amountIn),
             tokenIn == TransferHelper.NATIVE ? amountIn : 0
         );
     }
