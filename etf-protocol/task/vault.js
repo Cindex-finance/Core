@@ -318,10 +318,10 @@ const Trans = async() => {
     // await swapTostETH(data.USDT.address, 10000000);
     // await swap(data.stETH.address, data.DAI.address, "287323375483911", data.CindexSwap.address, wallet.address);
     // await oneinchSwap();
-    // await deposit(data.USDT.address, 1180000000, 'code');
+    // await deposit(data.USDC.address, '11759260', 'code');
     // await deposit(data.DAI.address, "100000000000000000000", 'cindex');
     // await userBalance(wallet.address);
-    // await withdraw("177852034201450104403", data.USDC.address);
+    // await withdraw("117928754471966798594", data.DAI.address);
     // await balance(wallet.address);
     // await write();
     //0xbc1ebded6c14c80c226bdb2f03b6405e1744dbc3342a79ad85ed5d8eb544a9f9

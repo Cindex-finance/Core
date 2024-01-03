@@ -4,7 +4,6 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./TransferHelper.sol";
 import "./Formula.sol";
@@ -12,7 +11,7 @@ import "./markets/SavingsDaiMarket.sol";
 import "./markets/StEthMarket.sol";
 import "./exchange/ICindexSwap.sol";
 
-contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
+contract Vault is ERC20, Ownable, ReentrancyGuard {
 
     struct AssetOracle {
         address asset;
@@ -74,7 +73,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
     {
         supportAssets = [address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48),address(0xdAC17F958D2ee523a2206206994597C13D831ec7),address(0x6B175474E89094C44Da98b954EedeAC495271d0F)];
         PROTOCOL_FEE_RESERVE = address(0x7c4FC00b404775E9Bf3996b1ad0c2b72799e994d);
-        router = ICindexSwap(address(0x48740115ab1bd1E16dddE0D1c463C2568De0D492));
+        router = ICindexSwap(address(0xbf4f75586f533C20F22055642687E9251CFc30Fe));
         oracles[address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48)] = AggregatorV3Interface(address(0x986b5E1e1755e3C2440e960477f25201B0a8bbD4));
         oracles[address(0xdAC17F958D2ee523a2206206994597C13D831ec7)] = AggregatorV3Interface(address(0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46));
         oracles[address(0x6B175474E89094C44Da98b954EedeAC495271d0F)] = AggregatorV3Interface(address(0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9));
@@ -104,7 +103,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
     /*
      *@dev deposit assets
      */
-    function deposit(DepositParams memory params) external onlyEOA nonReentrant whenNotPaused returns (uint256){
+    function deposit(DepositParams memory params) external onlyEOA nonReentrant returns (uint256){
         address tokenIn = params.tokenIn;
         uint256 amountIn = params.amountIn;
         string memory referralCode = params.referralCode;
@@ -129,7 +128,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
     /*
     *@dev deposit sDai and mint token
     */
-    function depositUnderlying(uint256 amount0) external onlyEOA nonReentrant whenNotPaused returns (uint256){
+    function depositUnderlying(uint256 amount0) external onlyEOA nonReentrant returns (uint256){
         require(amount0 > 0, 'Amount0InZero');
         uint256 _sharePrePrice = sharePrePrice();
         calProtocolFee();
@@ -151,7 +150,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
     /*
      *@dev withdraw shares
      */
-    function withdraw(WithdrawParams memory params) external onlyEOA nonReentrant whenNotPaused {
+    function withdraw(WithdrawParams memory params) external onlyEOA nonReentrant {
         uint256 share = params.share;
         address tokenOut = params.tokenOut;
         require(isSupportAsset(tokenOut), 'UnsupportedAsset');
@@ -185,7 +184,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
     /*
     *@dev withdraw share get underlying assets
     */
-    function withdrawUnderlying(uint256 share) external onlyEOA nonReentrant whenNotPaused {
+    function withdrawUnderlying(uint256 share) external onlyEOA nonReentrant {
         require(share > 0, 'ShareZero');
         calProtocolFee();
         uint256 totalSupply = totalSupply();
@@ -319,8 +318,9 @@ contract Vault is ERC20, Ownable, ReentrancyGuard, Pausable {
     }
 
     function _getPrice(AggregatorV3Interface feed) internal view returns (uint256, uint8) {
-        (uint80 roundId,int256 price,,,uint80 answeredInRound) = feed.latestRoundData();
+        (uint80 roundId,int256 price,,uint256 updatedAt, uint80 answeredInRound) = feed.latestRoundData();
         require(price > 0, "Chainlink price <= 0");
+        require(updatedAt != 0, "Incomplete round");
         require(answeredInRound >= roundId, "Stale price");
         uint8 decimals = feed.decimals();
         return (uint256(price), decimals);

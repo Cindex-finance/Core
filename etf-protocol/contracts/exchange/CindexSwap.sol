@@ -10,13 +10,15 @@ contract CindexSwap is ICindexSwap, OneInchRouterHelper {
 
     using Address for address;
 
+    address constant router = 0x1111111254EEB25477B68fb85Ed929f73A960582;
+
     function swap(
         address tokenIn,
         uint256 amountIn,
         SwapData calldata data
     ) external override payable {
-        TransferHelper.safeApproveInf(tokenIn, data.extRouter);
-        data.extRouter.functionCallWithValue(
+        TransferHelper.safeApproveInf(tokenIn, router);
+        router.functionCallWithValue(
             _getOneInchInputData(data.extCalldata, amountIn),
             tokenIn == TransferHelper.NATIVE ? amountIn : 0
         );
