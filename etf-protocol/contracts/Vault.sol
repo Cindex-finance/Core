@@ -72,6 +72,8 @@ contract Vault is ERC20, Ownable, ReentrancyGuard {
         ERC20("US Treasury Bond + STETH", "TBE")
     {
         supportAssets = [address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48),address(0xdAC17F958D2ee523a2206206994597C13D831ec7),address(0x6B175474E89094C44Da98b954EedeAC495271d0F)];
+        // address(0x7c4FC00b404775E9Bf3996b1ad0c2b72799e994d) is a multisig wallet.
+        transferOwnership(address(0x7c4FC00b404775E9Bf3996b1ad0c2b72799e994d));
         PROTOCOL_FEE_RESERVE = address(0x7c4FC00b404775E9Bf3996b1ad0c2b72799e994d);
         router = ICindexSwap(address(0x48740115ab1bd1E16dddE0D1c463C2568De0D492));
         oracles[address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48)] = AggregatorV3Interface(address(0x986b5E1e1755e3C2440e960477f25201B0a8bbD4));
