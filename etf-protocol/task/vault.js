@@ -11,7 +11,8 @@ const etherseumData = require('../deployments/deployed-contracts-ethereum.json')
 require('dotenv').config();
 const privateKey = process.env.PRIVATE_KEY;
 const apiKey = process.env.ALCHEMY_API_KEY;
-const provider = new ethers.JsonRpcProvider(`http://10.9.1.248:7545`);
+// const provider = new ethers.JsonRpcProvider(`http://10.9.1.248:7545`);
+const provider = new ethers.JsonRpcProvider(`https://eth-goerli.g.alchemy.com/v2/JRV7Xs-TqLcyYoZ2i3XeTfEMyy1MuWhM`);
 const wallet = new ethers.Wallet(privateKey, provider);
 const provider2 = new ethers.JsonRpcProvider('http://10.9.1.248:7545');
 
@@ -308,6 +309,7 @@ const write = async() => {
 }
 
 const Trans = async() => {
+    console.log(`owner: ${await valutContract.owner()}`);
     await balance(wallet.address);
     // await balance("0x068312c3b5FfD0cA32A45A3ba163A59525895397")
     await prices();

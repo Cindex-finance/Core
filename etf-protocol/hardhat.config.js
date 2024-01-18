@@ -26,7 +26,7 @@ module.exports = {
   },
   networks: {
     goerli: {
-      url: `https://eth-goerli.alchemyapi.io/v2/${process.env.ALCHEMY_API_KEY}`,
+      url: 'https://eth-goerli.g.alchemy.com/v2/JRV7Xs-TqLcyYoZ2i3XeTfEMyy1MuWhM',
       accounts: mnemonic()
     },
     bscTest: {

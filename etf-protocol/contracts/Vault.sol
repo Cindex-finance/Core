@@ -226,7 +226,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard {
             uint256 sDaiFeeAmount = 0;
             uint256 sETHFeeAmount = 0;
             if (sDaiAmount * exchangeRate > amount0) {
-                sDaiFeeAmount = (sDaiAmount * exchangeRate - amount0) * protocolFee / 100 / 1e18;
+                sDaiFeeAmount = (sDaiAmount * exchangeRate - amount0) * protocolFee / 100 / exchangeRate;
                 TransferHelper.safeTransfer(SavingsDaiMarket.sDAI, PROTOCOL_FEE_RESERVE, sDaiFeeAmount);
             }
             if (sETHAmount > amount1) {

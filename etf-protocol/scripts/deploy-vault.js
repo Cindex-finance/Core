@@ -14,6 +14,7 @@ async function deployVault(supportAssets, assetOracles, protocolFeeReserve, name
     // const vault = await Vault.deploy(supportAssets, assetOracles, protocolFeeReserve, cindexSwap.target, name, symbol);
     const vault = await Vault.deploy();
     console.log("Vault deployed to:", vault.target);
+    console.log(`owner: ${await vault.owner()}`);
     return vault.target;
 }
 
