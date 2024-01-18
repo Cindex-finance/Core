@@ -136,7 +136,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard {
         calProtocolFee();
         (uint256[] memory prices, uint8[] memory decimals) = getPrices();
         require(weights[0] > 0 && weights[1] > 0, 'WeightZero');
-        uint256 amount1 = amount0 * (prices[0] / (10 ** decimals[0])) * weights[1] / weights[0] / (prices[1] / (10 ** decimals[1]));
+        uint256 amount1 = amount0 * prices[0] * weights[1] * (10 ** decimals[1]) / (weights[0] * prices[1] * (10 ** decimals[0]));
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = amount0;
         amounts[1] = amount1;
